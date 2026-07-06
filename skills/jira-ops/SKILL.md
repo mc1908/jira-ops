@@ -13,42 +13,6 @@ description: >-
 Deterministic Jira **Data Center / Server** operations over the official REST API
 (`/rest/api/2`) using a Personal Access Token. No Jira CLI, no MCP, no Cloud auth.
 
-## ⚠ Check for full installation first
-
-This skill ships Python scripts that must be present alongside this `SKILL.md`.
-**Before doing anything else**, verify the `scripts/` directory exists next to this
-file:
-
-```
-ls <skill-root>/scripts/      # should contain jira.py, bootstrap.py, etc.
-```
-
-If `scripts/` is **missing**, the skill was not fully installed.
-Re-install via the skills CLI (recommended):
-
-```bash
-npx skills add mc1908/jira-ops
-```
-
-Or download the archive manually — and **remove `.git`** afterwards if this skill
-lives inside an existing git repository (to avoid a nested repo):
-
-```powershell
-# PowerShell — download archive (no nested git, recommended)
-Invoke-WebRequest https://github.com/mc1908/jira-ops/archive/refs/heads/main.zip -OutFile jira-ops.zip
-Expand-Archive jira-ops.zip -DestinationPath . ; Move-Item jira-ops-main\skills\jira-ops <skill-root> ; Remove-Item jira-ops.zip, jira-ops-main -Recurse -Force
-```
-
-```bash
-# bash — download archive
-curl -L https://github.com/mc1908/jira-ops/archive/refs/heads/main.tar.gz | \
-  tar -xz --strip-components=2 -C <skill-root> jira-ops-main/skills/jira-ops
-```
-
-For GitHub Copilot (project install), the skill root is `.agents/skills/jira-ops/`.
-For a global install on Windows it is `%USERPROFILE%\.copilot\skills\jira-ops\`.
-Once the full repo is in place, proceed with the setup below.
-
 All behavior lives in Python scripts under `scripts/`. Prefer these scripts over
 ad-hoc `curl`/REST calls so auth, pagination, retries, and secret redaction stay
 consistent.

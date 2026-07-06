@@ -1,0 +1,50 @@
+# =============================================================================
+# jira-ops is published as a standalone skill repo (mc1908/jira-ops) where the
+# repo root IS the skill root. Root skill files (SKILL.md, scripts/, assets/,
+# references/, README, LICENSE, .skillsignore) are committed by default.
+# This .gitignore keeps local research, generated files, and secrets OUT of git.
+# Install-time exclusions (committed but not shipped to consumers) live in
+# .skillsignore instead.
+# =============================================================================
+
+# --- Design docs: committed to GitHub for visibility, but kept OUT of the
+#     installed skill via .skillsignore. docs/ is intentionally NOT ignored. ---
+
+# --- Local research & tooling (never committed) ---
+/.agents/
+/skills-lock.json
+
+# --- Node / Skills CLI tooling ---
+node_modules/
+npm-debug.log*
+
+# --- Python virtual environments & caches ---
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Secrets & local runtime config (NEVER commit) ---
+*.token
+*.pat
+*.secret
+secrets/
+.env
+.env.*
+jira-dc-config.json
+*.local.json
+# Local profile config, in case JIRA_OPS_HOME is pointed inside the repo.
+config.json
+/jira-ops/
+
+# --- Logs, OS & editor cruft ---
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

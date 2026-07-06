@@ -1,0 +1,7 @@
+# Runtime dependencies for the jira-ops skill.
+requests>=2.31,<3
+
+# Optional: cross-platform system secret store. If present, jira-ops uses it
+# automatically; otherwise it falls back to a DPAPI-encrypted file on Windows
+# or a 0600 file on POSIX. Uncomment to enable.
+# keyring>=24

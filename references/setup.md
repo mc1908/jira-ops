@@ -31,6 +31,10 @@ python scripts/jira.py auth test-auth
 interpreter path, but you should invoke everything through `scripts/jira.py`,
 which auto re-execs into the venv.
 
+> **If the skill is installed inside an existing repo**, verify `.venv/` is in
+> that repo's `.gitignore` before the first commit (`grep .venv .gitignore`).
+> If it is missing, add it: `echo '.venv/' >> .gitignore`.
+
 ## Default project
 
 Set once with `--default-project ABC` (or in guided setup) so `sprint`,

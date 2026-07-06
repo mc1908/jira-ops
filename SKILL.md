@@ -65,6 +65,12 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
   `JIRA_OPS_TOKEN` in the environment overrides the stored token when set.
 - For a corporate CA, pass `--ca-cert "C:\path\ca-bundle.pem"`. Behind a proxy,
   pass `--proxy`. Never disable TLS as a shortcut.
+- **Before first commit**, confirm `.venv/` is in the repo's `.gitignore`.
+  The bootstrap creates a local virtual environment that must never be committed.
+  If the workspace `.gitignore` does not already contain `.venv/`, add it:
+  ```
+  echo '.venv/' >> .gitignore
+  ```
 
 ## Quick reference
 

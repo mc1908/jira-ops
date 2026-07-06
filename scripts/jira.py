@@ -6,7 +6,7 @@ Usage:
 
 Commands:
   setup                 Create/update a profile (interactive or via flags)
-  auth <sub>            set-token | test-auth | clear-token | whoami
+  auth <sub>            set-token | test-auth | clear-token | whoami | reset
   search               Search issues by JQL or preset
   mine                 List issues assigned to you (preset shortcuts)
   view <ISSUE-KEY>     Show issue details

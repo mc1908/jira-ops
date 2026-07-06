@@ -8,6 +8,7 @@ Invoked as:
   jira auth test-auth
   jira auth whoami
   jira auth clear-token
+  jira auth reset         Wipe all config + secrets (fresh-state reset; add --venv to also remove .venv)
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from __future__ import annotations
 import argparse
 import getpass
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -258,6 +260,66 @@ def cmd_clear_token(argv: list) -> None:
          text=("Token removed." if removed else "No stored token found."))
 
 
+def cmd_reset(argv: list) -> None:
+    parser = argparse.ArgumentParser(
+        prog="jira auth reset",
+        description="Remove ALL jira-ops config and secrets for a clean slate. "
+                    "Useful before testing a fresh install.")
+    parser.add_argument("--venv", action="store_true",
+                        help="Also delete the skill-local .venv directory.")
+    parser.add_argument("--yes", action="store_true",
+                        help="Skip the confirmation prompt.")
+    parser.add_argument("--json", dest="as_json", action="store_true")
+    args = parser.parse_args(argv)
+
+    config_dir = config_mod.paths.config_dir()
+    from jira_common.setup import venv_dir  # local import to keep setup module optional
+    venv_path = venv_dir()
+
+    if not args.yes and sys.stdin.isatty():
+        sys.stdout.write("Will permanently delete:\n")
+        sys.stdout.write(f"  {config_dir}  "
+                         f"{'(exists)' if config_dir.exists() else '(not present)'}\n")
+        if args.venv:
+            sys.stdout.write(f"  {venv_path}  "
+                             f"{'(exists)' if venv_path.exists() else '(not present)'}\n")
+            sys.stdout.write("  Note: .venv will be shown as a manual step because the\n"
+                             "  running Python interpreter holds locks on its files.\n")
+        answer = _prompt("Continue?", default="N")
+        if not answer.lower().startswith("y"):
+            sys.stdout.write("Aborted.\n")
+            return
+
+    removed_dirs = []
+    if config_dir.exists():
+        shutil.rmtree(config_dir)
+        removed_dirs.append(str(config_dir))
+
+    lines = ["Reset complete."]
+    if removed_dirs:
+        lines += [f"  Deleted: {d}" for d in removed_dirs]
+    else:
+        lines.append("  Config directory was already absent.")
+
+    if args.venv and venv_path.exists():
+        # Cannot rmtree the venv in-process: Windows locks .pyd files loaded by
+        # the running interpreter. Print the one-liner to finish manually.
+        lines.append("")
+        lines.append("Delete the venv manually (run after this command exits):")
+        if os.name == "nt":
+            lines.append(f"  Remove-Item -Recurse -Force \"{venv_path}\"")
+        else:
+            lines.append(f"  rm -rf \"{venv_path}\"")
+    elif args.venv:
+        lines.append("  .venv was already absent.")
+
+    lines.append("")
+    lines.append("Then run 'python scripts/bootstrap.py' to set up again.")
+    payload = {"ok": True, "action": "reset", "removed": removed_dirs,
+               "venvPendingManualDelete": str(venv_path) if args.venv else None}
+    emit(payload, as_json=args.as_json, text="\n".join(lines))
+
+
 def main() -> None:
     ensure_venv()
     if len(sys.argv) < 2:
@@ -280,6 +342,8 @@ def main() -> None:
             cmd_test_auth(sub_rest, whoami=True)
         elif sub == "clear-token":
             cmd_clear_token(sub_rest)
+        elif sub == "reset":
+            cmd_reset(sub_rest)
         else:
             raise JiraOpsError("config", f"Unknown auth subcommand: {sub}")
         return

@@ -1,11 +1,6 @@
 # Files to exclude when installing this skill via the Skills CLI (npx skills add).
-# These are committed to the repo (for GitHub / publishing / development) but are
-# NOT part of the installed skill copied into a consumer's .agents/skills/jira-ops/.
-README.md
-PUBLISHING.md
-.gitignore
-.skillsignore
-.npmignore
-node_modules/
-tests/
+# The installable skill lives under skills/jira-ops/ — the CLI copies that
+# directory. Files below are excluded from what gets copied into consumers'
+# .agents/skills/jira-ops/.
 docs/
+tests/

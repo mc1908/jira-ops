@@ -22,6 +22,8 @@ npm-debug.log*
 .venv/
 venv/
 env/
+skills/*/.venv/
+skills/*/venv/
 __pycache__/
 *.py[cod]
 *.egg-info/

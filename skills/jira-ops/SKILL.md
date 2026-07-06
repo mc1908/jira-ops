@@ -23,28 +23,26 @@ file:
 ls <skill-root>/scripts/      # should contain jira.py, bootstrap.py, etc.
 ```
 
-If `scripts/` is **missing**, the `skills` CLI only installed this `SKILL.md`.
-Replace it with the full repo — and **remove `.git`** afterwards if this skill
+If `scripts/` is **missing**, the skill was not fully installed.
+Re-install via the skills CLI (recommended):
+
+```bash
+npx skills add mc1908/jira-ops
+```
+
+Or download the archive manually — and **remove `.git`** afterwards if this skill
 lives inside an existing git repository (to avoid a nested repo):
 
 ```powershell
 # PowerShell — download archive (no nested git, recommended)
 Invoke-WebRequest https://github.com/mc1908/jira-ops/archive/refs/heads/main.zip -OutFile jira-ops.zip
-Expand-Archive jira-ops.zip -DestinationPath . ; Move-Item jira-ops-main <skill-root> ; Remove-Item jira-ops.zip
+Expand-Archive jira-ops.zip -DestinationPath . ; Move-Item jira-ops-main\skills\jira-ops <skill-root> ; Remove-Item jira-ops.zip, jira-ops-main -Recurse -Force
 ```
 
 ```bash
 # bash — download archive
 curl -L https://github.com/mc1908/jira-ops/archive/refs/heads/main.tar.gz | \
-  tar -xz && mv jira-ops-main <skill-root>
-```
-
-Or clone and then strip the nested `.git`:
-
-```bash
-git clone https://github.com/mc1908/jira-ops.git <skill-root>
-Remove-Item -Recurse -Force <skill-root>\.git   # PowerShell
-# rm -rf <skill-root>/.git                      # bash
+  tar -xz --strip-components=2 -C <skill-root> jira-ops-main/skills/jira-ops
 ```
 
 For GitHub Copilot (project install), the skill root is `.agents/skills/jira-ops/`.

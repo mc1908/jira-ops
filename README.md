@@ -7,70 +7,47 @@ handling.
 
 ## Install
 
-> **The `skills` CLI only installs `SKILL.md`** — it does not copy `scripts/` or
-> other files. Use the download or clone steps below for a full installation.
->
-> **Nested-repo warning:** if you install into an existing git repo (the normal
-> case for a project-scoped skill), remove the `.git` directory after cloning so
-> you don't accidentally create a nested repository.
+```bash
+npx skills add mc1908/jira-ops        # project install → .agents/skills/jira-ops/
+npx skills add mc1908/jira-ops -g     # global install
+```
 
-### Recommended: download archive (no nested git repo)
+Works with any agent that follows the [Agent Skills Spec](https://agentskills.io/)
+(GitHub Copilot, Codex, Claude Code, Cursor, etc.) via the standard skills
+discovery paths.
+
+The CLI installs the full skill directory — `SKILL.md`, `scripts/`, `assets/`,
+and `references/` — into your agent's skills folder. No manual clone needed.
+
+### Manual install / update
 
 ```powershell
-# PowerShell (Windows)
+# PowerShell — download archive (no nested .git)
 $dest = ".agents\skills\jira-ops"
 Invoke-WebRequest https://github.com/mc1908/jira-ops/archive/refs/heads/main.zip -OutFile jira-ops.zip
 Expand-Archive jira-ops.zip -DestinationPath .
-Move-Item jira-ops-main $dest
-Remove-Item jira-ops.zip
+Move-Item jira-ops-main\skills\jira-ops $dest
+Remove-Item jira-ops.zip, jira-ops-main -Recurse -Force
 ```
 
 ```bash
-# bash (macOS/Linux)
+# bash — download archive
 curl -L https://github.com/mc1908/jira-ops/archive/refs/heads/main.tar.gz | \
-  tar -xz --strip-components=1 -C .agents/skills/jira-ops --one-top-level=jira-ops-main
-# or with wget:
-wget -qO- https://github.com/mc1908/jira-ops/archive/refs/heads/main.tar.gz | \
-  tar -xz && mv jira-ops-main .agents/skills/jira-ops
+  tar -xz --strip-components=2 -C .agents/skills/jira-ops jira-ops-main/skills/jira-ops
 ```
 
-### Alternative: git clone (remove `.git` if inside another repo)
+Or with git (remove `.git` to avoid a nested repo inside an existing repo):
 
 ```bash
-git clone https://github.com/mc1908/jira-ops.git .agents/skills/jira-ops
-# Remove nested .git so it doesn't conflict with the outer repo:
-Remove-Item -Recurse -Force .agents\skills\jira-ops\.git   # PowerShell
-# rm -rf .agents/skills/jira-ops/.git                      # bash
+git clone https://github.com/mc1908/jira-ops.git _jira-ops-tmp
+cp -r _jira-ops-tmp/skills/jira-ops .agents/skills/jira-ops
+rm -rf _jira-ops-tmp
 ```
 
-Omit the `.git` removal only if you deliberately want a [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) relationship.
-
-### Global install (all projects on this machine)
+### Update
 
 ```bash
-# Windows (PowerShell)
-$dest = "$env:USERPROFILE\.copilot\skills\jira-ops"
-Invoke-WebRequest https://github.com/mc1908/jira-ops/archive/refs/heads/main.zip -OutFile jira-ops.zip
-Expand-Archive jira-ops.zip -DestinationPath . ; Move-Item jira-ops-main $dest ; Remove-Item jira-ops.zip
-
-# macOS/Linux
-mkdir -p ~/.copilot/skills
-curl -L https://github.com/mc1908/jira-ops/archive/refs/heads/main.tar.gz | \
-  tar -xz && mv jira-ops-main ~/.copilot/skills/jira-ops
-```
-
-For other agents replace `.agents/skills/` / `~/.copilot/skills/` with the
-agent's skills directory (see the
-[skills CLI supported agents](https://www.npmjs.com/package/skills#supported-agents) table).
-
-### Keep up to date
-
-```bash
-# Re-download the archive (cleanest, no git history)
-# — repeat the install steps above into the same destination, overwriting files.
-
-# Or if you kept .git (submodule style):
-cd .agents/skills/jira-ops && git pull
+npx skills update jira-ops
 ```
 
 ## Setup

@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _cli import add_common_args, ensure_venv, load_profile, run  # noqa: E402
+from _cli import add_common_args, ensure_venv, load_profile, resolve_project, run  # noqa: E402
 from jira_common import presets as presets_mod  # noqa: E402
 from jira_common.client import JiraClient  # noqa: E402
 from jira_common.errors import JiraOpsError  # noqa: E402
@@ -45,7 +45,7 @@ def _search_and_emit(profile, jql: str, limit: int, as_json: bool, header: str) 
 def cmd_search(argv: list) -> None:
     parser = argparse.ArgumentParser(prog="jira search")
     add_common_args(parser)
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group()
     group.add_argument("--jql", help="Raw JQL query.")
     group.add_argument("--preset", help="Named preset (see references/examples.md).")
     parser.add_argument("--project", help="Convenience: open issues in a project.")
@@ -59,12 +59,13 @@ def cmd_search(argv: list) -> None:
         except KeyError as exc:
             raise JiraOpsError("config", str(exc)) from exc
         header = f"Preset '{args.preset}'"
-    elif args.project:
-        jql = presets_mod.project_open_jql(args.project)
-        header = f"Open in {args.project}"
-    else:
+    elif args.jql:
         jql = args.jql
         header = "Results"
+    else:
+        project = resolve_project(args.project, profile)
+        jql = presets_mod.project_open_jql(project)
+        header = f"Open in {project}"
     _search_and_emit(profile, jql, args.limit, args.as_json, header)
 
 

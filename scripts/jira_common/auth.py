@@ -238,3 +238,15 @@ def clear_token(profile: Profile) -> bool:
     if _file_delete(profile):
         removed = True
     return removed
+
+
+def token_exists(profile: Profile) -> bool:
+    """True if a PAT is already stored for this profile (ignores env override)."""
+    t = profile.auth.type
+    if t in ("auto", "system-keyring") and _keyring_get(profile.auth.target):
+        return True
+    try:
+        return _file_get(profile) is not None
+    except JiraOpsError:
+        # A stored-but-unreadable token still counts as present.
+        return True

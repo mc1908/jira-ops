@@ -43,6 +43,18 @@ def load_profile(name: str | None) -> Profile:
     return cfg.get(name)
 
 
+def resolve_project(explicit: str | None, profile: Profile) -> str:
+    """Return the explicit project key, else the profile default, else error."""
+    project = explicit or profile.default_project
+    if not project:
+        raise JiraOpsError(
+            "config",
+            "No project specified and no default configured. Pass --project KEY "
+            "or set one with 'jira setup --default-project KEY'.",
+        )
+    return project
+
+
 def add_common_args(parser) -> None:
     parser.add_argument("--profile", help="Config profile name (default: configured default).")
     parser.add_argument("--json", dest="as_json", action="store_true",

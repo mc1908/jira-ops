@@ -19,6 +19,24 @@ Base: `<baseUrl>/rest/api/2`. Bearer auth with a PAT. All requests go through
 | Create issue | `POST /issue` `{fields:{...}}` (Phase 2) |
 | Edit fields | `PUT /issue/{key}` `{fields:{...}}` (Phase 2) |
 
+## Agile endpoints (sprints/boards)
+
+Base: `<baseUrl>/rest/agile/1.0` (separate from `/rest/api/2`). Requires a board
+to exist; scrum boards are needed for sprints/backlog.
+
+| Purpose | Method + path |
+|---------|---------------|
+| List boards | `GET /board?projectKeyOrId=KEY&type=scrum` (paginated, key `values`) |
+| Board sprints | `GET /board/{boardId}/sprint?state=active|future|closed` (key `values`) |
+| Sprint details | `GET /sprint/{sprintId}` |
+| Sprint issues | `GET /sprint/{sprintId}/issue?fields=...` (key `issues`) |
+| Board backlog | `GET /board/{boardId}/backlog?fields=...` (key `issues`) |
+
+`sprint --project KEY` resolves the project's first scrum board, picks the sprint
+by `--state` (default `active`), then aggregates issues into a per-status
+breakdown. Use `boards --project KEY` to disambiguate multi-board projects and
+pass `--board ID`.
+
 ## Creating issues safely
 
 Always resolve required/custom fields first:

@@ -27,10 +27,16 @@ class Profile:
     verify_tls: bool = True
     ca_cert_path: Optional[str] = None
     proxy: Optional[str] = None
+    default_project: Optional[str] = None
 
     @property
     def api_base(self) -> str:
         return f"{self.base_url.rstrip('/')}/rest/api/{self.api_version}"
+
+    @property
+    def agile_base(self) -> str:
+        """Base for the Jira Agile (boards/sprints/backlog) REST API."""
+        return f"{self.base_url.rstrip('/')}/rest/agile/1.0"
 
     def browse_url(self, issue_key: str) -> str:
         return f"{self.base_url.rstrip('/')}/browse/{issue_key}"
@@ -83,6 +89,7 @@ def _profile_from_dict(name: str, d: dict) -> Profile:
         verify_tls=bool(d.get("verifyTls", True)),
         ca_cert_path=d.get("caCertPath"),
         proxy=d.get("proxy"),
+        default_project=d.get("defaultProject"),
     )
 
 
@@ -98,6 +105,7 @@ def _profile_to_dict(p: Profile) -> dict:
         "verifyTls": p.verify_tls,
         "caCertPath": p.ca_cert_path,
         "proxy": p.proxy,
+        "defaultProject": p.default_project,
     }
 
 
@@ -146,6 +154,7 @@ def upsert_profile(
     verify_tls: bool = True,
     ca_cert_path: Optional[str] = None,
     proxy: Optional[str] = None,
+    default_project: Optional[str] = None,
     make_default: bool = True,
 ) -> Config:
     """Create/update a profile, preserving other profiles if config exists."""
@@ -153,6 +162,11 @@ def upsert_profile(
         cfg = load()
     else:
         cfg = Config(profiles={}, default_profile=name)
+
+    # Preserve an existing default project when the caller does not override it.
+    existing = cfg.profiles.get(name)
+    if default_project is None and existing is not None:
+        default_project = existing.default_project
 
     profile = Profile(
         name=name,
@@ -162,6 +176,7 @@ def upsert_profile(
         verify_tls=verify_tls,
         ca_cert_path=ca_cert_path,
         proxy=proxy,
+        default_project=default_project,
     )
     cfg.profiles[name] = profile
     if make_default or not cfg.default_profile:

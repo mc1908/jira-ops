@@ -14,6 +14,10 @@ Commands:
   transitions <KEY>    List available transitions
   transition <KEY>     Move issue by transition id or status name (--dry-run)
   projects             List visible projects
+  boards               List agile boards (optionally for a project)
+  sprints              List sprints on a board/project (active|future|closed)
+  sprint               Sprint details + status breakdown (active sprint by project)
+  backlog              List a board/project backlog for sprint planning
   health               Local readiness check (no network)
 """
 
@@ -39,6 +43,10 @@ _COMMANDS = {
     "projects": "jira_project.py",
     "transitions": "jira_transition.py",
     "transition": "jira_transition.py",
+    "boards": "jira_sprint.py",
+    "sprints": "jira_sprint.py",
+    "sprint": "jira_sprint.py",
+    "backlog": "jira_sprint.py",
     "health": "bootstrap.py",
 }
 

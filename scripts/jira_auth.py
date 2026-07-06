@@ -2,7 +2,8 @@
 """Profile setup and PAT authentication commands.
 
 Invoked as:
-  jira setup   [--name --base-url --api-version --ca-cert --proxy --no-verify-tls]
+  jira setup                 Interactive guided setup (base URL, project, token)
+  jira setup --base-url URL [--name --default-project --api-version --ca-cert --proxy --no-verify-tls]
   jira auth set-token   [--token-stdin]   (reads PAT from stdin/env/secure prompt)
   jira auth test-auth
   jira auth whoami
@@ -44,39 +45,142 @@ def _read_secret(token_stdin: bool) -> str:
         ) from exc
 
 
+def _prompt(label: str, *, default: str | None = None, required: bool = False) -> str:
+    """Prompt for a line of input, with an optional default and required check."""
+    suffix = f" [{default}]" if default else ""
+    while True:
+        try:
+            value = input(f"{label}{suffix}: ").strip()
+        except (EOFError, OSError) as exc:
+            raise JiraOpsError(
+                "config",
+                "Interactive input is not available. Re-run 'jira setup' with "
+                "flags (e.g. --base-url ...) instead.",
+            ) from exc
+        if not value and default is not None:
+            return default
+        if value or not required:
+            return value
+        sys.stderr.write("  A value is required.\n")
+
+
+def _test_identity(profile) -> None:
+    """Validate stored token by calling /myself; print a friendly result."""
+    try:
+        client = JiraClient(profile)
+        me = client.get_json("myself")
+        sys.stdout.write(
+            f"Validated as {me.get('displayName')} ({me.get('name')}).\n"
+        )
+    except JiraOpsError as exc:
+        sys.stdout.write(
+            f"Saved, but validation failed: [{exc.category}] {exc.message}\n"
+            f"  hint: {exc.hint}\n"
+        )
+
+
+def _run_interactive_setup(args) -> None:
+    """Collect all profile + token details in one guided session."""
+    sys.stdout.write("Interactive Jira setup — press Enter to accept [defaults].\n\n")
+    name = args.name or _prompt("Profile name", default="default")
+    base_url = args.base_url or _prompt(
+        "Jira base URL (e.g. https://jira.example.com)", required=True)
+    default_project = args.default_project or (
+        _prompt("Default project key (optional, e.g. ABC)", default="") or None)
+    ca_cert = args.ca_cert or (
+        _prompt("Corporate CA bundle path (optional)", default="") or None)
+    proxy = args.proxy or (
+        _prompt("HTTP(S) proxy URL (optional)", default="") or None)
+    verify_tls = not args.no_verify_tls
+
+    cfg = config_mod.upsert_profile(
+        name,
+        base_url,
+        api_version=args.api_version,
+        verify_tls=verify_tls,
+        ca_cert_path=ca_cert,
+        proxy=proxy,
+        default_project=default_project,
+    )
+    profile = cfg.get(name)
+    backend = auth_mod.describe_backend(profile)
+    sys.stdout.write(
+        f"\nProfile '{name}' saved -> {config_mod.paths.config_path()}\n"
+        f"  base URL:        {base_url}\n"
+        f"  default project: {default_project or '(none)'}\n"
+        f"  secret backend:  {backend}\n\n"
+    )
+
+    has_token = auth_mod.token_exists(profile)
+    if has_token:
+        sys.stdout.write(
+            "A PAT is already stored for this profile. Enter a new one to "
+            "rotate it, or skip to keep the current token.\n")
+        question, default = "Update the stored PAT now?", "N"
+    else:
+        question, default = "Enter your PAT now?", "Y"
+
+    if _prompt(question, default=default).lower().startswith("y"):
+        token = _read_secret(False)
+        stored = auth_mod.store_token(profile, token)
+        verb = "updated" if has_token else "stored"
+        sys.stdout.write(f"Token {verb} via {stored}.\n")
+        _test_identity(profile)
+    else:
+        sys.stdout.write(
+            "Skipped. To set or update the PAT later:\n"
+            "  jira auth set-token      # prompts securely; re-run any time to rotate\n"
+            "  jira auth test-auth      # validate against /myself\n")
+
+
 def cmd_setup(argv: list) -> None:
     parser = argparse.ArgumentParser(prog="jira setup")
     add_common_args(parser)
-    parser.add_argument("--name", default="default", help="Profile name.")
-    parser.add_argument("--base-url", required=True, help="Jira base URL, e.g. https://jira.example.com")
+    parser.add_argument("--name", default=None, help="Profile name (default: default).")
+    parser.add_argument("--base-url", default=None,
+                        help="Jira base URL, e.g. https://jira.example.com")
+    parser.add_argument("--default-project", default=None,
+                        help="Project key used when --project is omitted (e.g. ABC).")
     parser.add_argument("--api-version", default="2")
     parser.add_argument("--ca-cert", default=None, help="Path to corporate CA bundle.")
     parser.add_argument("--proxy", default=None)
     parser.add_argument("--no-verify-tls", action="store_true",
                         help="Disable TLS verification (discouraged; prefer --ca-cert).")
+    parser.add_argument("-i", "--interactive", action="store_true",
+                        help="Guided prompts for every setting (also default when "
+                             "--base-url is omitted).")
     args = parser.parse_args(argv)
 
+    # Interactive when explicitly asked or when the base URL was not supplied.
+    if args.interactive or not args.base_url:
+        _run_interactive_setup(args)
+        return
+
+    name = args.name or "default"
     cfg = config_mod.upsert_profile(
-        args.name,
+        name,
         args.base_url,
         api_version=args.api_version,
         verify_tls=not args.no_verify_tls,
         ca_cert_path=args.ca_cert,
         proxy=args.proxy,
+        default_project=args.default_project,
     )
-    profile = cfg.get(args.name)
+    profile = cfg.get(name)
     backend = auth_mod.describe_backend(profile)
     payload = {
         "ok": True,
         "action": "setup",
-        "profile": args.name,
+        "profile": name,
         "baseUrl": args.base_url,
+        "defaultProject": profile.default_project,
         "backend": backend,
         "configPath": str(config_mod.paths.config_path()),
     }
     text = (
-        f"Profile '{args.name}' saved -> {config_mod.paths.config_path()}\n"
+        f"Profile '{name}' saved -> {config_mod.paths.config_path()}\n"
         f"  base URL: {args.base_url}\n"
+        f"  default project: {profile.default_project or '(none)'}\n"
         f"  secret backend: {backend}\n"
         f"Next: jira auth set-token   then   jira auth test-auth"
     )
@@ -93,10 +197,13 @@ def cmd_set_token(argv: list) -> None:
     args = parser.parse_args(argv)
 
     profile = load_profile(args.profile)
+    replacing = auth_mod.token_exists(profile)
     token = _read_secret(args.token_stdin)
     backend = auth_mod.store_token(profile, token)
+    verb = "updated" if replacing else "stored"
 
-    result = {"ok": True, "action": "set-token", "profile": profile.name, "backend": backend}
+    result = {"ok": True, "action": "set-token", "profile": profile.name,
+              "backend": backend, "replaced": replacing}
     if not args.no_test:
         client = JiraClient(profile)  # resolves token from store
         me = client.get_json("myself")
@@ -105,10 +212,15 @@ def cmd_set_token(argv: list) -> None:
             "displayName": me.get("displayName"),
             "email": me.get("emailAddress"),
         }
-    text = f"Token stored via {backend} for profile '{profile.name}'."
+    text = f"Token {verb} via {backend} for profile '{profile.name}'."
+    if replacing:
+        text += " Previous PAT was overwritten (rotated)."
     if "identity" in result:
         ident = result["identity"]
         text += f"\nValidated as {ident.get('displayName')} ({ident.get('name')})."
+    if os.environ.get("JIRA_OPS_TOKEN"):
+        text += ("\nNote: JIRA_OPS_TOKEN is set and takes precedence over the "
+                 "stored token until you unset it.")
     emit(result, as_json=args.as_json, text=text)
 
 

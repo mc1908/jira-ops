@@ -26,23 +26,43 @@ The entrypoint `scripts/jira.py` **auto re-execs into that venv**, so always cal
 python scripts/jira.py <command> [options]
 ```
 
+Run every command from the **skill root** (the folder containing this
+`SKILL.md`, e.g. `C:\...\jira-ops>`). The `scripts/` path is relative to it — do
+**not** `cd` into `scripts/`. Commands are otherwise working-directory
+independent (config, venv, and token resolve by absolute path), so an absolute
+path like `python <skill-root>/scripts/jira.py ...` also works from anywhere.
+
 Do not call the other `scripts/*.py` modules directly; go through `jira.py`.
 Add `--json` to any command for machine-readable output.
 
 ## First-time setup
 
-If a command reports missing config or dependencies, run setup once:
+If a command reports missing config or dependencies, run setup once. The guided
+flow collects the base URL, profile name, **default project**, optional CA/proxy,
+and the PAT in a single session:
 
 ```
-python scripts/bootstrap.py                               # create .venv + install deps
-python scripts/jira.py setup --base-url "https://JIRA_HOST" --name default
+python scripts/bootstrap.py                               # venv + deps, then guided setup
+python scripts/bootstrap.py -i                            # re-run guided setup any time
+```
+
+Non-interactive equivalent:
+
+```
+python scripts/jira.py setup --base-url "https://JIRA_HOST" --name default \
+  --default-project ABC                                   # default project (optional)
 python scripts/jira.py auth set-token --token-stdin       # PAT via stdin (not argv)
 python scripts/jira.py auth test-auth                     # validates GET /myself
 ```
 
+- Set a **default project** so `sprint`, `backlog`, and `search` work without
+  `--project`. Override per call with `--project OTHER`.
 - The PAT is stored in the OS secret store if available, else a DPAPI-encrypted
   file (Windows) / `0600` file (POSIX) under the platform config dir — never in
   the repo, never echoed.
+- **Update / rotate the PAT** any time by re-running `auth set-token` (it
+  overwrites the old one and re-validates). Remove it with `auth clear-token`.
+  `JIRA_OPS_TOKEN` in the environment overrides the stored token when set.
 - For a corporate CA, pass `--ca-cert "C:\path\ca-bundle.pem"`. Behind a proxy,
   pass `--proxy`. Never disable TLS as a shortcut.
 
@@ -51,6 +71,8 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
 | Intent | Command |
 |--------|---------|
 | Who am I | `python scripts/jira.py auth whoami` |
+| Set / update PAT | `python scripts/jira.py auth set-token` (re-run to rotate) |
+| Remove PAT | `python scripts/jira.py auth clear-token` |
 | My open work | `python scripts/jira.py mine --preset my-open` |
 | My in-progress | `python scripts/jira.py mine --preset my-in-progress` |
 | Stale / blocked | `python scripts/jira.py mine --preset my-stale` / `my-blocked` |
@@ -61,6 +83,11 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
 | Transition | `python scripts/jira.py transition ABC-123 --to "In Review"` |
 | Comment | `python scripts/jira.py comment ABC-123 --body "text"` |
 | Projects | `python scripts/jira.py projects` |
+| Boards | `python scripts/jira.py boards --project ABC` |
+| Sprints | `python scripts/jira.py sprints --project ABC --state active` |
+| Active sprint status | `python scripts/jira.py sprint --project ABC` |
+| Sprint issue list | `python scripts/jira.py sprint --project ABC --issues` |
+| Backlog (plan next) | `python scripts/jira.py backlog --project ABC` |
 | Local health | `python scripts/jira.py health` |
 
 Presets: `my-open`, `my-in-progress`, `my-stale`, `my-blocked`,
@@ -90,6 +117,20 @@ python scripts/jira.py comment ABC-123 --template implementation-update \
 ```
 
 Templates: `implementation-update`, `test-result`, `blocked`, `handoff`.
+
+## Sprint planning
+
+Sprint/board data uses Jira's **Agile REST API** (`/rest/agile/1.0`), so these
+commands need a **scrum board** to exist for the project.
+
+- *"How many active issues in the active sprint for project ABC?"*
+  `python scripts/jira.py sprint --project ABC` prints the active sprint, total
+  issue count, and a per-status breakdown. Add `--issues` for the full list.
+- *"Plan the next sprint from the backlog."* Read candidates with
+  `python scripts/jira.py backlog --project ABC`, and inspect the upcoming
+  sprint with `python scripts/jira.py sprints --project ABC --state future`.
+- If a project has several boards, resolve the id with `boards --project ABC`
+  and pass `--board ID` explicitly.
 
 ## When to load references
 

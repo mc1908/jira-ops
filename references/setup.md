@@ -1,10 +1,27 @@
 # Setup & troubleshooting
 
-## Full setup
+> Run all commands from the **skill root** — the folder containing `SKILL.md`
+> (e.g. `C:\ai\skills\jira-ops>`). The `scripts/...` paths are relative to it;
+> do not `cd` into `scripts/`. An absolute path
+> (`python C:\...\jira-ops\scripts\jira.py ...`) works from any directory because
+> config, venv, and token all resolve independently of the current directory.
+
+## Guided setup (recommended)
+
+```
+python scripts/bootstrap.py       # venv + deps, then prompts for everything
+python scripts/bootstrap.py -i    # re-run the guided setup any time
+```
+
+The guided flow collects the base URL, profile name, **default project**,
+optional CA bundle / proxy, and your PAT — then validates against `/myself`.
+
+## Full setup (non-interactive)
 
 ```
 python scripts/bootstrap.py
-python scripts/jira.py setup --base-url "https://your-jira-host" --name default
+python scripts/jira.py setup --base-url "https://your-jira-host" --name default \
+    --default-project ABC
 python scripts/jira.py auth set-token --token-stdin
 python scripts/jira.py auth test-auth
 ```
@@ -13,6 +30,13 @@ python scripts/jira.py auth test-auth
 `assets/requirements.txt`, and runs a local health check. It prints the exact
 interpreter path, but you should invoke everything through `scripts/jira.py`,
 which auto re-execs into the venv.
+
+## Default project
+
+Set once with `--default-project ABC` (or in guided setup) so `sprint`,
+`backlog`, and `search` resolve the project automatically. Stored as
+`defaultProject` on the profile in `config.json`. Override per call with
+`--project OTHER`.
 
 ## Health check (no network)
 

@@ -31,14 +31,22 @@ headers are redacted from error output.
 
 ## Rotating a token
 
+`set-token` overwrites the stored PAT and re-validates it — that alone is a
+rotation, no need to clear first:
+
+```
+python scripts/jira.py auth set-token          # prompts, stores, validates
+python scripts/jira.py auth test-auth           # optional re-check
+```
+
+Use `clear-token` only to remove the PAT entirely (e.g. decommissioning):
+
 ```
 python scripts/jira.py auth clear-token
-python scripts/jira.py auth set-token --token-stdin
-python scripts/jira.py auth test-auth
 ```
 
 Rotate immediately any PAT that has been pasted into chat, a ticket, or shell
-history.
+history, and revoke the old token in Jira (Profile → Personal Access Tokens).
 
 ## Providing the token without a prompt
 

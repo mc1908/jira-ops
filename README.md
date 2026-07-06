@@ -7,14 +7,37 @@ handling.
 
 ## Install
 
-```
-npx skills add mc1908/jira-ops        # into ./.agents/skills/jira-ops/
-npx skills add mc1908/jira-ops -g     # global: ~/.agents/skills/jira-ops/
+> **The `skills` CLI only installs `SKILL.md`** — it does not copy `scripts/` or
+> other files. Use `git clone` for the full installation (recommended), or see
+> below for how to repair an `npx skills add` install.
+
+### Recommended: git clone
+
+```bash
+# GitHub Copilot — project install (committed with your repo, shared with team)
+git clone https://github.com/mc1908/jira-ops.git .agents/skills/jira-ops
+
+# GitHub Copilot — global install (available across all projects)
+git clone https://github.com/mc1908/jira-ops.git "%USERPROFILE%\.copilot\skills\jira-ops"     # Windows
+git clone https://github.com/mc1908/jira-ops.git ~/.copilot/skills/jira-ops                   # macOS/Linux
 ```
 
-Works with any agent following the [Agent Skills Spec](https://agentskills.io/)
-(GitHub Copilot agent mode, Codex CLI, Claude Code) via the `.agents/skills/`,
-`.github/skills/`, and `.claude/skills/` discovery paths.
+For other agents replace `.agents/skills/` with the agent's skills directory
+(see the [skills CLI supported agents](https://www.npmjs.com/package/skills#supported-agents) table).
+
+### Alternative: npx skills add (then clone to complete)
+
+```bash
+npx skills add mc1908/jira-ops        # installs SKILL.md only
+# then replace with the full repo:
+git clone https://github.com/mc1908/jira-ops.git .agents/skills/jira-ops
+```
+
+### Keep up to date
+
+```bash
+cd .agents/skills/jira-ops && git pull
+```
 
 ## Setup
 

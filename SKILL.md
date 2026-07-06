@@ -13,6 +13,28 @@ description: >-
 Deterministic Jira **Data Center / Server** operations over the official REST API
 (`/rest/api/2`) using a Personal Access Token. No Jira CLI, no MCP, no Cloud auth.
 
+## ⚠ Check for full installation first
+
+This skill ships Python scripts that must be present alongside this `SKILL.md`.
+**Before doing anything else**, verify the `scripts/` directory exists next to this
+file:
+
+```
+ls <skill-root>/scripts/      # should contain jira.py, bootstrap.py, etc.
+```
+
+If `scripts/` is **missing**, the `skills` CLI only installed this `SKILL.md`.
+Replace it with the full repo:
+
+```bash
+# Find where this SKILL.md lives, then replace it with the full clone:
+git clone https://github.com/mc1908/jira-ops.git <skill-root>
+```
+
+For GitHub Copilot (project install), the skill root is `.agents/skills/jira-ops/`.
+For a global install on Windows it is `%USERPROFILE%\.copilot\skills\jira-ops\`.
+Once the full repo is in place, proceed with the setup below.
+
 All behavior lives in Python scripts under `scripts/`. Prefer these scripts over
 ad-hoc `curl`/REST calls so auth, pagination, retries, and secret redaction stay
 consistent.

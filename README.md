@@ -8,34 +8,68 @@ handling.
 ## Install
 
 > **The `skills` CLI only installs `SKILL.md`** — it does not copy `scripts/` or
-> other files. Use `git clone` for the full installation (recommended), or see
-> below for how to repair an `npx skills add` install.
+> other files. Use the download or clone steps below for a full installation.
+>
+> **Nested-repo warning:** if you install into an existing git repo (the normal
+> case for a project-scoped skill), remove the `.git` directory after cloning so
+> you don't accidentally create a nested repository.
 
-### Recommended: git clone
+### Recommended: download archive (no nested git repo)
 
-```bash
-# GitHub Copilot — project install (committed with your repo, shared with team)
-git clone https://github.com/mc1908/jira-ops.git .agents/skills/jira-ops
-
-# GitHub Copilot — global install (available across all projects)
-git clone https://github.com/mc1908/jira-ops.git "%USERPROFILE%\.copilot\skills\jira-ops"     # Windows
-git clone https://github.com/mc1908/jira-ops.git ~/.copilot/skills/jira-ops                   # macOS/Linux
+```powershell
+# PowerShell (Windows)
+$dest = ".agents\skills\jira-ops"
+Invoke-WebRequest https://github.com/mc1908/jira-ops/archive/refs/heads/main.zip -OutFile jira-ops.zip
+Expand-Archive jira-ops.zip -DestinationPath .
+Move-Item jira-ops-main $dest
+Remove-Item jira-ops.zip
 ```
 
-For other agents replace `.agents/skills/` with the agent's skills directory
-(see the [skills CLI supported agents](https://www.npmjs.com/package/skills#supported-agents) table).
+```bash
+# bash (macOS/Linux)
+curl -L https://github.com/mc1908/jira-ops/archive/refs/heads/main.tar.gz | \
+  tar -xz --strip-components=1 -C .agents/skills/jira-ops --one-top-level=jira-ops-main
+# or with wget:
+wget -qO- https://github.com/mc1908/jira-ops/archive/refs/heads/main.tar.gz | \
+  tar -xz && mv jira-ops-main .agents/skills/jira-ops
+```
 
-### Alternative: npx skills add (then clone to complete)
+### Alternative: git clone (remove `.git` if inside another repo)
 
 ```bash
-npx skills add mc1908/jira-ops        # installs SKILL.md only
-# then replace with the full repo:
 git clone https://github.com/mc1908/jira-ops.git .agents/skills/jira-ops
+# Remove nested .git so it doesn't conflict with the outer repo:
+Remove-Item -Recurse -Force .agents\skills\jira-ops\.git   # PowerShell
+# rm -rf .agents/skills/jira-ops/.git                      # bash
 ```
+
+Omit the `.git` removal only if you deliberately want a [git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) relationship.
+
+### Global install (all projects on this machine)
+
+```bash
+# Windows (PowerShell)
+$dest = "$env:USERPROFILE\.copilot\skills\jira-ops"
+Invoke-WebRequest https://github.com/mc1908/jira-ops/archive/refs/heads/main.zip -OutFile jira-ops.zip
+Expand-Archive jira-ops.zip -DestinationPath . ; Move-Item jira-ops-main $dest ; Remove-Item jira-ops.zip
+
+# macOS/Linux
+mkdir -p ~/.copilot/skills
+curl -L https://github.com/mc1908/jira-ops/archive/refs/heads/main.tar.gz | \
+  tar -xz && mv jira-ops-main ~/.copilot/skills/jira-ops
+```
+
+For other agents replace `.agents/skills/` / `~/.copilot/skills/` with the
+agent's skills directory (see the
+[skills CLI supported agents](https://www.npmjs.com/package/skills#supported-agents) table).
 
 ### Keep up to date
 
 ```bash
+# Re-download the archive (cleanest, no git history)
+# — repeat the install steps above into the same destination, overwriting files.
+
+# Or if you kept .git (submodule style):
 cd .agents/skills/jira-ops && git pull
 ```
 

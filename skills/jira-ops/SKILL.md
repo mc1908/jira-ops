@@ -23,14 +23,21 @@ After setup, a skill-local virtual environment exists at `<skill-root>/.venv/`.
 The entrypoint `scripts/jira.py` **auto re-execs into that venv**, so always call:
 
 ```
-python scripts/jira.py <command> [options]
+python <skill-root>/scripts/jira.py <command> [options]
 ```
 
-Run every command from the **skill root** (the folder containing this
-`SKILL.md`, e.g. `C:\...\jira-ops>`). The `scripts/` path is relative to it — do
-**not** `cd` into `scripts/`. Commands are otherwise working-directory
-independent (config, venv, and token resolve by absolute path), so an absolute
-path like `python <skill-root>/scripts/jira.py ...` also works from anywhere.
+**Determine `<skill-root>` from the location of this `SKILL.md` file** — it is
+the directory that contains `SKILL.md`. Never assume a relative `scripts/` path
+from the current working directory; always use the absolute path to
+`scripts/jira.py`. Common locations:
+
+| Install method | Typical `<skill-root>` |
+|---|---|
+| `npx skills add` (project install) | `<project-root>/.agents/skills/jira-ops` |
+| `npx skills add -g` (global) | `~/.agents/skills/jira-ops` |
+| Manual / dev repo | path where `SKILL.md` lives |
+
+Config, venv, and token all resolve by absolute path — cwd never matters.
 
 Do not call the other `scripts/*.py` modules directly; go through `jira.py`.
 Add `--json` to any command for machine-readable output.
@@ -42,17 +49,17 @@ flow collects the base URL, profile name, **default project**, optional CA/proxy
 and the PAT in a single session:
 
 ```
-python scripts/bootstrap.py                               # venv + deps, then guided setup
-python scripts/bootstrap.py -i                            # re-run guided setup any time
+python <skill-root>/scripts/bootstrap.py                  # venv + deps, then guided setup
+python <skill-root>/scripts/bootstrap.py -i               # re-run guided setup any time
 ```
 
 Non-interactive equivalent:
 
 ```
-python scripts/jira.py setup --base-url "https://JIRA_HOST" --name default \
+python <skill-root>/scripts/jira.py setup --base-url "https://JIRA_HOST" --name default \
   --default-project ABC                                   # default project (optional)
-python scripts/jira.py auth set-token --token-stdin       # PAT via stdin (not argv)
-python scripts/jira.py auth test-auth                     # validates GET /myself
+python <skill-root>/scripts/jira.py auth set-token --token-stdin  # PAT via stdin (not argv)
+python <skill-root>/scripts/jira.py auth test-auth                # validates GET /myself
 ```
 
 - Set a **default project** so `sprint`, `backlog`, and `search` work without
@@ -73,6 +80,10 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
   ```
 
 ## Quick reference
+
+> In the table below `python scripts/jira.py` is shorthand for
+> `python <skill-root>/scripts/jira.py` — substitute the actual absolute path
+> to the skill root as described in the interpreter contract above.
 
 | Intent | Command |
 |--------|---------|

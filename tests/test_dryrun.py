@@ -66,3 +66,27 @@ def test_lt27_sprint_add_dryrun(jira, issue, sprint_id):
     assert r.code == 0 and r.ok, r
     assert r.data.get("action") == "sprint-add"
     assert issue in r.data.get("issues", [])
+
+
+def test_lt28_update_description_file(jira, issue, tmp_path):
+    """--description-file round-trips multiline content without shell quoting."""
+    desc_file = tmp_path / "desc.txt"
+    desc_file.write_text("h2. Goal\nLine 1\nLine 2\n\nLine 3", encoding="utf-8")
+    r = jira("update", issue, "--description-file", str(desc_file), "--dry-run", "--json")
+    assert r.code == 0 and r.ok, r
+    assert r.data.get("dryRun") is True
+    assert "description" in r.data.get("fields", [])
+    assert r.data["request"]["fields"]["description"] == "h2. Goal\nLine 1\nLine 2\n\nLine 3"
+
+
+def test_lt29_create_description_file(jira, project, tmp_path):
+    """create --description-file works in dry-run without shell quoting (type hardcoded)."""
+    desc_file = tmp_path / "desc.txt"
+    desc_file.write_text("h2. Acceptance Criteria\n* Criterion 1\n* Criterion 2", encoding="utf-8")
+    r = jira("create", "--project", project, "--type", "Story",
+             "--summary", "LT desc-file test",
+             "--description-file", str(desc_file), "--dry-run", "--json")
+    assert r.code == 0 and r.ok, r
+    assert r.data.get("action") == "create"
+    assert r.data["request"]["fields"]["description"] == \
+        "h2. Acceptance Criteria\n* Criterion 1\n* Criterion 2"

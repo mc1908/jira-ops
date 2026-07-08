@@ -55,23 +55,31 @@ npx skills update jira-ops
 The fastest path is the guided setup, which collects everything (base URL,
 profile name, default project, optional CA/proxy) and your PAT in one session:
 
-> Run every command from the **skill root** — the folder that contains
-> `SKILL.md` (e.g. `C:\ai\skills\jira-ops>`). The `scripts/...` paths are
-> relative to it; you never `cd` into `scripts/`. (Absolute paths work from any
-> directory too, since config/venv/token resolve independently of the cwd.)
+> All `scripts/...` paths in this README are **relative to the skill root** —
+> the folder that contains `SKILL.md`. The skill root depends on how you
+> installed it:
+>
+> | Install method | Skill root | Example command |
+> |---|---|---|
+> | `npx skills add` (project) | `.agents\skills\jira-ops` | `python .agents\skills\jira-ops\scripts\jira.py ...` |
+> | `npx skills add -g` (global) | `~/.agents/skills/jira-ops` | `python ~/.agents/skills/jira-ops/scripts/jira.py ...` |
+> | Manual / this dev repo | `skills\jira-ops` | `python skills\jira-ops\scripts\jira.py ...` |
+>
+> You can always use the full path from any working directory — config, venv,
+> and token all resolve by absolute path regardless of cwd.
 
 ```
-python scripts/bootstrap.py            # venv + dependencies, then guided setup
-python scripts/bootstrap.py -i         # re-run the guided setup any time
+python <skill-root>/scripts/bootstrap.py            # venv + dependencies, then guided setup
+python <skill-root>/scripts/bootstrap.py -i         # re-run the guided setup any time
 ```
 
 Prefer flags? Configure it non-interactively instead:
 
 ```
-python scripts/jira.py setup --base-url "https://your-jira-host" \
+python <skill-root>/scripts/jira.py setup --base-url "https://your-jira-host" \
     --name default --default-project ABC
-python scripts/jira.py auth set-token --token-stdin           # PAT via stdin
-python scripts/jira.py auth test-auth                         # validate /myself
+python <skill-root>/scripts/jira.py auth set-token --token-stdin           # PAT via stdin
+python <skill-root>/scripts/jira.py auth test-auth                         # validate /myself
 ```
 
 ### Default project

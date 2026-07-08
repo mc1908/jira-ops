@@ -7,8 +7,8 @@ Invoked as:
   jira view    ISSUE-KEY [--json]
   jira comment ISSUE-KEY (--body "..." | --template NAME ...) [--dry-run] [--json]
   jira comments ISSUE-KEY [--limit N] [--json]
-  jira update  ISSUE-KEY [--summary ... --description ... --label ... --field k=v] [--dry-run] [--json]
-  jira create  --project ABC --type Task --summary "..." [--description ... --label ...] [--dry-run] [--json]
+  jira update  ISSUE-KEY [--summary ... --description ... --description-file PATH --label ... --field k=v] [--dry-run] [--json]
+  jira create  --project ABC --type Task --summary "..." [--description ... --description-file PATH --label ...] [--dry-run] [--json]
   jira assign  ISSUE-KEY --to username | --to -            [--dry-run] [--json]
   jira link    ISSUE-KEY --to OTHER --type "Blocks"        [--comment ...] [--dry-run] [--json]
   jira link-types                                          [--json]
@@ -187,6 +187,32 @@ def cmd_comment(argv: list) -> None:
     )
 
 
+def _resolve_description(args) -> str | None:
+    """Resolve --description / --description-file (including '-' for stdin) to a string.
+
+    Mutual exclusion: both flags set simultaneously → JiraOpsError.
+    """
+    desc_file = getattr(args, "description_file", None)
+    desc = getattr(args, "description", None)
+
+    if desc_file is not None and desc is not None:
+        raise JiraOpsError("config", "Use --description or --description-file, not both.")
+
+    if desc_file is not None:
+        if desc_file == "-":
+            return sys.stdin.read()
+        path = Path(desc_file)
+        if not path.exists():
+            raise JiraOpsError("config", f"--description-file not found: {path}")
+        return path.read_text(encoding="utf-8")
+
+    if desc is None:
+        return None
+    if desc == "-":
+        return sys.stdin.read()
+    return desc
+
+
 def _parse_field_pairs(pairs: list | None) -> dict:
     """Parse repeated --field key=value flags into a fields dict."""
     out: dict = {}
@@ -206,7 +232,9 @@ def cmd_update(argv: list) -> None:
     add_common_args(parser)
     parser.add_argument("issue_key")
     parser.add_argument("--summary", help="Set the issue summary (title).")
-    parser.add_argument("--description", help="Set the description (wiki markup / plain text).")
+    parser.add_argument("--description", help="Set the description (wiki markup / plain text). Use '-' to read from stdin.")
+    parser.add_argument("--description-file", dest="description_file", metavar="PATH",
+                        help="Read description from a file instead of --description (avoids shell quoting for multiline content). Use '-' for stdin.")
     parser.add_argument("--priority", help="Set the priority by name (e.g. High).")
     parser.add_argument("--assignee", help="Set the assignee by username (Data Center).")
     parser.add_argument("--label", action="append", dest="labels",
@@ -224,8 +252,9 @@ def cmd_update(argv: list) -> None:
 
     if args.summary is not None:
         fields["summary"] = args.summary
-    if args.description is not None:
-        fields["description"] = args.description
+    desc = _resolve_description(args)
+    if desc is not None:
+        fields["description"] = desc
     if args.priority is not None:
         fields["priority"] = {"name": args.priority}
     if args.assignee is not None:
@@ -310,7 +339,9 @@ def cmd_create(argv: list) -> None:
                         help="Issue type name, e.g. Story, Bug, Task, Test, Sub-task "
                              "(required; infer from context or ask the user).")
     parser.add_argument("--summary", required=True, help="Issue summary (title).")
-    parser.add_argument("--description", help="Description (wiki markup / plain text).")
+    parser.add_argument("--description", help="Description (wiki markup / plain text). Use '-' to read from stdin.")
+    parser.add_argument("--description-file", dest="description_file", metavar="PATH",
+                        help="Read description from a file instead of --description (avoids shell quoting for multiline content). Use '-' for stdin.")
     parser.add_argument("--priority", help="Priority by name (e.g. High).")
     parser.add_argument("--assignee", help="Assignee username (Data Center).")
     parser.add_argument("--label", action="append", dest="labels",
@@ -339,8 +370,9 @@ def cmd_create(argv: list) -> None:
         "issuetype": {"name": args.issuetype},
         "summary": args.summary,
     }
-    if args.description is not None:
-        fields["description"] = args.description
+    desc = _resolve_description(args)
+    if desc is not None:
+        fields["description"] = desc
     if args.priority is not None:
         fields["priority"] = {"name": args.priority}
     if args.assignee is not None:

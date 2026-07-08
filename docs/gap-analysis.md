@@ -149,8 +149,10 @@ guideline exists precisely so these can be added when a real need appears:
   (beyond moving issues), heavier and more workflow-specific.
 - **Bulk transition/edit** — powerful but higher blast radius; needs careful
   confirmation UX before it belongs in the default surface.
-- **Standup/summary command** — nice-to-have that the DESIGN goals mention; can
-  be composed today from `mine` + templates, so defer a dedicated command.
+- **Standup/summary** — **handled as an SOP, not a command** (2026-07-08):
+  `references/sop/standup.md`. Composition/judgment work belongs to the agent
+  orchestrating existing data commands, not a frozen script (see
+  `references/extending.md` → *Commands vs. SOPs*).
 
 ---
 
@@ -195,7 +197,8 @@ Every new command must honor the existing contract (see
 | Assign / unassign verb | **Build now** |
 | Attachments | **Built** (2026-07-08) |
 | Worklog, changelog/history, saved filters | **Built** (2026-07-08) |
-| Editmeta, watchers, versions/components, epics, sprint lifecycle, bulk, standup | Later (extend on demand) |
+| Standup / status summary | **SOP** (`references/sop/standup.md`) |
+| Editmeta, watchers, versions/components, epics, sprint lifecycle, bulk | Later (extend on demand) |
 | Issue deletion, admin, Cloud features | Out of scope |
 
 Building the five "now" items removes the most common reasons an agent would

@@ -142,6 +142,9 @@ python scripts/jira.py comment ABC-123 --template implementation-update \
 
 Templates: `implementation-update`, `test-result`, `blocked`, `handoff`.
 
+For multi-step, judgment-driven workflows (e.g. composing a daily standup), follow
+the matching **SOP** instead of a single command — see *Standard procedures* below.
+
 ## Editing issue fields
 
 Use `update` to set editable fields with the same safety model as `comment` /
@@ -252,6 +255,16 @@ commands need a **scrum board** to exist for the project.
 | Auth backends, TLS/proxy, secrets | `references/security.md` |
 | Install / troubleshooting setup | `references/setup.md` |
 | Adding a new command / capability | `references/extending.md` |
+
+## Standard procedures (SOPs)
+
+Multi-step, judgment-driven workflows are documented as SOPs under
+`references/sop/` (kept out of this file for progressive disclosure). Load the
+matching SOP and follow it, orchestrating the commands above.
+
+| When the user asks for... | SOP |
+|---------------------------|-----|
+| A daily standup / status summary | `references/sop/standup.md` |
 
 ## Exit codes (for `--json` callers)
 

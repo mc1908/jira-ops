@@ -68,6 +68,35 @@ succeeded. Reuse it for any PUT-based edit.
 - Runs `guard_no_secret_leak()` over every string value, re-reads the issue,
   supports `--dry-run`, and calls `JiraClient.update_issue()` — no raw HTTP.
 
+## Commands vs. SOPs: pick the right extension type
+
+Not every capability should be a script. Decide by the nature of the work:
+
+- **Deterministic API operation** (one request, predictable payload, e.g.
+  `create`, `assign`, `attach`) → add a **command** (this document's main path).
+- **Multi-step, judgment-driven workflow** that composes several commands and
+  produces prose or decisions from dynamic context (e.g. a daily standup, a
+  release-notes draft, a triage pass) → write an **SOP**, not a script.
+  Scripting synthesis work is brittle: it freezes the format, can't adapt to the
+  user's phrasing or scope, and duplicates data commands the skill already has.
+  Let the deterministic commands own the *data* and let the agent own the
+  *composition*, guided by the SOP.
+
+### How to add an SOP
+
+- Put each SOP in its own file under `references/sop/<name>.md` (one procedure
+  per file) so the surface stays organized and extensible.
+- Keep `SKILL.md` lean: add a single row to the **Standard procedures (SOPs)**
+  table pointing at the file — do **not** inline the procedure. This preserves
+  **progressive disclosure** (the agent loads a full SOP only when the task
+  calls for it).
+- Structure an SOP as: goal → clarify scope → gather data (which read-only
+  commands to run) → compose → deliver (and any optional write, always with
+  `--dry-run` first). Emphasize that it is guidance to adapt, not a fixed
+  template to emit verbatim.
+- Reuse existing commands inside the SOP; if the SOP reveals a genuine
+  *deterministic* gap, add that piece as a command per the rules above.
+
 ## Deliberate non-goal: issue deletion
 
 Issue deletion (`DELETE /issue/{key}`) is intentionally **not** implemented and

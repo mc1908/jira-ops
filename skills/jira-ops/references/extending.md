@@ -67,3 +67,16 @@ succeeded. Reuse it for any PUT-based edit.
   add/remove verbs (`--label x` adds, `--label -x` removes).
 - Runs `guard_no_secret_leak()` over every string value, re-reads the issue,
   supports `--dry-run`, and calls `JiraClient.update_issue()` — no raw HTTP.
+
+## Deliberate non-goal: issue deletion
+
+Issue deletion (`DELETE /issue/{key}`) is intentionally **not** implemented and
+should stay out of scope. It is irreversible and cascades to sub-tasks, so it
+breaks the skill's reversible, previewable write model (`--dry-run` cannot make a
+hard delete safe), and it is rare admin work rather than day-to-day developer flow
+(see Non-Goals in `docs/DESIGN.md`). Prefer safer alternatives: close/resolve via
+`transition`, or mark obsolete with an `update` label. If a genuine repeated need
+ever appears, gate it far harder than a normal write — interactive typed-key
+confirmation (no `--force`/`--yes` bypass), a distinct exit-code category, and an
+explicit note here that it is an admin escape hatch, not a routine command.
+

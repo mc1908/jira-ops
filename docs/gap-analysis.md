@@ -137,9 +137,10 @@ Legitimate but **less frequent, larger, or higher-risk**; the extension
 guideline exists precisely so these can be added when a real need appears:
 
 - **Worklog / time tracking** — valuable only for teams that log time; skip until asked.
-- **Attachments** — genuinely useful (logs/screenshots) but needs a new
-  multipart path in `JiraClient` (`X-Atlassian-Token: no-check`, no JSON body),
-  so it is the first item that requires a **client change**, not just a command.
+- **Attachments** — ~~needs a new multipart path in `JiraClient`~~ **implemented
+  2026-07-08** (`attach` command + `JiraClient.add_attachment`, multipart with
+  `X-Atlassian-Token: no-check`). This was the first item to require a client
+  change rather than just a command.
 - **Changelog / issue history**, **editmeta**, **watchers**, **saved filters**,
   **versions/components listing** — small reads, but niche; add per demand.
 - **Create/start/close sprints, backlog ranking, epics** — agile *management*
@@ -190,7 +191,8 @@ Every new command must honor the existing contract (see
 | Move issues into a sprint | **Build now** |
 | User lookup | **Build now** |
 | Assign / unassign verb | **Build now** |
-| Worklog, attachments, changelog, watchers, filters, versions/components, epics, sprint lifecycle, bulk, standup | Later (extend on demand) |
+| Attachments | **Built** (2026-07-08) |
+| Worklog, changelog, watchers, filters, versions/components, epics, sprint lifecycle, bulk, standup | Later (extend on demand) |
 | Issue deletion, admin, Cloud features | Out of scope |
 
 Building the five "now" items removes the most common reasons an agent would

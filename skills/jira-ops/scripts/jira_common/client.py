@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 import requests
@@ -76,6 +77,8 @@ class JiraClient:
         *,
         params: Optional[dict] = None,
         json_body: Optional[dict] = None,
+        files: Optional[dict] = None,
+        extra_headers: Optional[dict] = None,
     ) -> requests.Response:
         url = self._url(path)
         idempotent = method.upper() in ("GET", "HEAD")
@@ -88,6 +91,8 @@ class JiraClient:
                     url,
                     params=params,
                     json=json_body,
+                    files=files,
+                    headers=extra_headers,
                     timeout=_DEFAULT_TIMEOUT,
                     verify=self._verify,
                 )
@@ -240,6 +245,28 @@ class JiraClient:
         """Move issues into a sprint via the Agile POST /sprint/{id}/issue."""
         url = f"{self.profile.agile_base}/sprint/{sprint_id}/issue"
         return self.post_json(url, {"issues": list(issue_keys)})
+
+    def add_attachment(self, key: str, file_path) -> Any:
+        """Upload a file to an issue via POST /issue/{key}/attachments.
+
+        Uses multipart form-data with the mandatory ``X-Atlassian-Token:
+        no-check`` header. Returns the list of attachment metadata Jira reports.
+        """
+        path = Path(file_path).expanduser()
+        if not path.is_file():
+            raise JiraOpsError("config", f"Attachment file not found: {path}")
+        # Content-Type=None drops the session's application/json default so
+        # requests can set the multipart boundary itself.
+        with path.open("rb") as handle:
+            resp = self.request(
+                "POST",
+                f"issue/{key}/attachments",
+                files={"file": (path.name, handle)},
+                extra_headers={"X-Atlassian-Token": "no-check", "Content-Type": None},
+            )
+        if resp.status_code == 204 or not resp.content:
+            return {"ok": True}
+        return resp.json()
 
     # ------------------------------------------------------------------ #
     # pagination

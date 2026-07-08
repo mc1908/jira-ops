@@ -19,6 +19,7 @@ Base: `<baseUrl>/rest/api/2`. Bearer auth with a PAT. All requests go through
 | Assign / unassign | `PUT /issue/{key}/assignee` `{name}` (`null` unassigns) |
 | Link issues | `POST /issueLink` `{type:{name},outwardIssue,inwardIssue}` |
 | Link types | `GET /issueLinkType` (key `issueLinkTypes`) |
+| Attach file | `POST /issue/{key}/attachments` (multipart, `X-Atlassian-Token: no-check`) |
 | List transitions | `GET /issue/{key}/transitions` |
 | Do transition | `POST /issue/{key}/transitions` `{transition:{id}}` |
 | Create issue | `POST /issue` `{fields:{...}}` |

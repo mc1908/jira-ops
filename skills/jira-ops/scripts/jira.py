@@ -17,6 +17,7 @@ Commands:
   assign <KEY>         Set/clear assignee (--to username | --to -) (--dry-run)
   link <KEY>           Link issues (--to OTHER --type "Blocks") (--dry-run)
   link-types           List configured issue link types
+  attach <KEY>         Attach file(s) to an issue (--file PATH) (--dry-run)
   transitions <KEY>    List available transitions
   transition <KEY>     Move issue by transition id or status name (--dry-run)
   projects             List visible projects
@@ -54,6 +55,7 @@ _COMMANDS = {
     "assign": "jira_issue.py",
     "link": "jira_issue.py",
     "link-types": "jira_issue.py",
+    "attach": "jira_issue.py",
     "projects": "jira_project.py",
     "users": "jira_project.py",
     "transitions": "jira_transition.py",

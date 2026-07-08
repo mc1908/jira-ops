@@ -12,6 +12,7 @@ Invoked as:
   jira assign  ISSUE-KEY --to username | --to -            [--dry-run] [--json]
   jira link    ISSUE-KEY --to OTHER --type "Blocks"        [--comment ...] [--dry-run] [--json]
   jira link-types                                          [--json]
+  jira attach  ISSUE-KEY --file PATH [--file PATH ...]     [--dry-run] [--json]
 """
 
 from __future__ import annotations
@@ -528,6 +529,54 @@ def cmd_link(argv: list) -> None:
     )
 
 
+def cmd_attach(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira attach")
+    add_common_args(parser)
+    parser.add_argument("issue_key")
+    parser.add_argument("--file", action="append", dest="files", required=True,
+                        help="Path to a file to attach (repeatable).")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+
+    paths = []
+    for raw in args.files:
+        path = Path(raw).expanduser()
+        if not path.is_file():
+            raise JiraOpsError("config", f"Attachment file not found: {path}")
+        paths.append(path)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+
+    # Fetch current state first (safety rule; validates the key is visible).
+    client.get_json(f"issue/{args.issue_key}", {"fields": "summary"})
+
+    if args.dry_run:
+        emit(
+            {"ok": True, "action": "attach", "dryRun": True, "issue": args.issue_key,
+             "files": [{"name": p.name, "bytes": p.stat().st_size} for p in paths]},
+            as_json=args.as_json,
+            text=(f"[dry-run] Would attach to {args.issue_key}:\n" +
+                  "\n".join(f"  {p.name} ({p.stat().st_size} bytes)" for p in paths)),
+        )
+        return
+
+    attached = []
+    for path in paths:
+        result = client.add_attachment(args.issue_key, path)
+        for meta in (result if isinstance(result, list) else []):
+            attached.append({"id": meta.get("id"), "filename": meta.get("filename"),
+                             "size": meta.get("size")})
+    emit(
+        {"ok": True, "action": "attach", "issue": args.issue_key,
+         "attached": attached, "url": profile.browse_url(args.issue_key)},
+        as_json=args.as_json,
+        text=(f"Attached {len(attached)} file(s) to {args.issue_key}: " +
+              ", ".join(a["filename"] for a in attached)) if attached
+             else f"Attached to {args.issue_key}.",
+    )
+
+
 def main() -> None:
     ensure_venv()
     if len(sys.argv) < 2:
@@ -544,6 +593,7 @@ def main() -> None:
         "assign": cmd_assign,
         "link": cmd_link,
         "link-types": cmd_link_types,
+        "attach": cmd_attach,
     }
     handler = dispatch.get(command)
     if not handler:

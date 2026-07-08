@@ -94,6 +94,7 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
 | Assign / unassign | `python scripts/jira.py assign ABC-123 --to jsmith` (`--to -` clears) |
 | Link issues | `python scripts/jira.py link ABC-123 --to ABC-124 --type "Blocks"` |
 | Link types | `python scripts/jira.py link-types` |
+| Attach file | `python scripts/jira.py attach ABC-123 --file .\log.txt` |
 | Find a user | `python scripts/jira.py users --query smith` |
 | Projects | `python scripts/jira.py projects` |
 | Boards | `python scripts/jira.py boards --project ABC` |
@@ -111,12 +112,12 @@ Presets: `my-open`, `my-in-progress`, `my-stale`, `my-blocked`,
 
 - **Fetch current state first.** Every write command re-reads the issue before acting.
 - **Preview writes.** `comment`, `transition`, `update`, `create`, `assign`,
-  `link`, and `sprint-add` accept `--dry-run` to show the exact payload. Use it
-  before real writes unless the user clearly asked to send.
+  `link`, `attach`, and `sprint-add` accept `--dry-run` to show the exact
+  payload. Use it before real writes unless the user clearly asked to send.
 - **Transitions are runtime data.** Never assume names; run `transitions KEY` first.
   Transition by `--to "Status/Transition name"` or `--id`.
 - **Confirm before write.** Get user approval before any write command
-  (`comment` / `transition` / `update` / `create` / `assign` / `link` / `sprint-add`).
+  (`comment` / `transition` / `update` / `create` / `assign` / `link` / `attach` / `sprint-add`).
 - **Resolve names, don't guess.** Use `users --query` for exact assignee
   usernames and `link-types` for valid link names before an `assign`/`link`.
 - **Never print or commit the PAT.** Read tokens via stdin/prompt, not argv.
@@ -192,6 +193,17 @@ python scripts/jira.py link ABC-123 --to ABC-124 --type "Blocks" --dry-run
   reads as *KEY <type.outward> OTHER* (e.g. with `Blocks`, KEY blocks OTHER).
 - Look up exact usernames with `users --query` and valid link names with
   `link-types` rather than guessing.
+
+### Attachments
+
+```
+python scripts/jira.py attach ABC-123 --file .\build.log --file .\screenshot.png --dry-run
+```
+
+- Repeat `--file` to upload several files in one call; `--dry-run` lists the
+  names and sizes without uploading. Paths are validated locally first.
+- Uploads go through multipart form-data with the required
+  `X-Atlassian-Token: no-check` header (handled by the client).
 
 ## Sprint planning
 

@@ -116,6 +116,17 @@ python scripts/jira.py link ABC-123 --to ABC-124 --type "Blocks" --dry-run
 bodies against secret leaks. `link ABC-123 --to ABC-124 --type Blocks` means
 "ABC-123 blocks ABC-124".
 
+## Attachments
+
+```
+python scripts/jira.py attach ABC-123 --file ./build.log --dry-run
+python scripts/jira.py attach ABC-123 --file ./build.log --file ./error.png
+```
+
+Repeatable `--file`; paths are checked locally before upload. The client sends
+multipart form-data with `X-Atlassian-Token: no-check`. Returns `{"ok": true,
+"action": "attach", "issue": KEY, "attached": [{id, filename, size}], ...}`.
+
 ## Sprint planning (write)
 
 ```

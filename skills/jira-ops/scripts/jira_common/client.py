@@ -268,6 +268,42 @@ class JiraClient:
             return {"ok": True}
         return resp.json()
 
+    def add_worklog(
+        self,
+        key: str,
+        *,
+        time_spent: str,
+        comment: Optional[str] = None,
+        started: Optional[str] = None,
+    ) -> Any:
+        """Log work on an issue via POST /issue/{key}/worklog."""
+        body: Dict[str, Any] = {"timeSpent": time_spent}
+        if comment:
+            body["comment"] = comment
+        if started:
+            body["started"] = started
+        return self.post_json(f"issue/{key}/worklog", body)
+
+    def get_worklogs(self, key: str, *, max_results: int = 100) -> List[dict]:
+        """List worklog entries for an issue (GET /issue/{key}/worklog)."""
+        return self.paginate(f"issue/{key}/worklog", key="worklogs", max_results=max_results)
+
+    def get_changelog(self, key: str) -> Any:
+        """Return (summary, histories) for an issue via expand=changelog."""
+        issue = self.get_json(f"issue/{key}", {"expand": "changelog", "fields": "summary"})
+        summary = (issue.get("fields") or {}).get("summary", "")
+        histories = (issue.get("changelog") or {}).get("histories", [])
+        return summary, histories
+
+    def get_filter(self, filter_id: str) -> Any:
+        """Fetch a saved filter (GET /filter/{id}); includes its ``jql``."""
+        return self.get_json(f"filter/{filter_id}")
+
+    def favourite_filters(self) -> List[dict]:
+        """List the caller's favourite saved filters (GET /filter/favourite)."""
+        data = self.get_json("filter/favourite")
+        return data if isinstance(data, list) else []
+
     # ------------------------------------------------------------------ #
     # pagination
     # ------------------------------------------------------------------ #

@@ -20,6 +20,11 @@ Base: `<baseUrl>/rest/api/2`. Bearer auth with a PAT. All requests go through
 | Link issues | `POST /issueLink` `{type:{name},outwardIssue,inwardIssue}` |
 | Link types | `GET /issueLinkType` (key `issueLinkTypes`) |
 | Attach file | `POST /issue/{key}/attachments` (multipart, `X-Atlassian-Token: no-check`) |
+| Log work | `POST /issue/{key}/worklog` `{timeSpent,comment?,started?}` |
+| List worklogs | `GET /issue/{key}/worklog` (key `worklogs`) |
+| Change history | `GET /issue/{key}?expand=changelog` (key `changelog.histories`) |
+| Saved filter | `GET /filter/{id}` (includes `jql`) |
+| Favourite filters | `GET /filter/favourite` |
 | List transitions | `GET /issue/{key}/transitions` |
 | Do transition | `POST /issue/{key}/transitions` `{transition:{id}}` |
 | Create issue | `POST /issue` `{fields:{...}}` |

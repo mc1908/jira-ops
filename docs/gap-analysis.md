@@ -136,13 +136,15 @@ writes with the standard safety model.
 Legitimate but **less frequent, larger, or higher-risk**; the extension
 guideline exists precisely so these can be added when a real need appears:
 
-- **Worklog / time tracking** — valuable only for teams that log time; skip until asked.
+- **Worklog / time tracking** — ~~valuable only for teams that log time~~
+  **implemented 2026-07-08** (`worklog` command: list + log, `--dry-run`).
 - **Attachments** — ~~needs a new multipart path in `JiraClient`~~ **implemented
   2026-07-08** (`attach` command + `JiraClient.add_attachment`, multipart with
   `X-Atlassian-Token: no-check`). This was the first item to require a client
   change rather than just a command.
-- **Changelog / issue history**, **editmeta**, **watchers**, **saved filters**,
-  **versions/components listing** — small reads, but niche; add per demand.
+- **Changelog / issue history** (**`history`**) and **saved filters**
+  (**`filters`/`filter`**) — **implemented 2026-07-08**. Remaining small reads
+  — **editmeta**, **watchers** — add per demand.
 - **Create/start/close sprints, backlog ranking, epics** — agile *management*
   (beyond moving issues), heavier and more workflow-specific.
 - **Bulk transition/edit** — powerful but higher blast radius; needs careful
@@ -192,7 +194,8 @@ Every new command must honor the existing contract (see
 | User lookup | **Build now** |
 | Assign / unassign verb | **Build now** |
 | Attachments | **Built** (2026-07-08) |
-| Worklog, changelog, watchers, filters, versions/components, epics, sprint lifecycle, bulk, standup | Later (extend on demand) |
+| Worklog, changelog/history, saved filters | **Built** (2026-07-08) |
+| Editmeta, watchers, versions/components, epics, sprint lifecycle, bulk, standup | Later (extend on demand) |
 | Issue deletion, admin, Cloud features | Out of scope |
 
 Building the five "now" items removes the most common reasons an agent would

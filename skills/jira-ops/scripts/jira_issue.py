@@ -13,6 +13,10 @@ Invoked as:
   jira link    ISSUE-KEY --to OTHER --type "Blocks"        [--comment ...] [--dry-run] [--json]
   jira link-types                                          [--json]
   jira attach  ISSUE-KEY --file PATH [--file PATH ...]     [--dry-run] [--json]
+  jira worklog ISSUE-KEY [--time "1h 30m" --comment ...]   [--dry-run] [--json]
+  jira history ISSUE-KEY [--limit N]                       [--json]
+  jira filters                                             [--json]
+  jira filter  FILTER-ID [--limit N]                       [--json]
 """
 
 from __future__ import annotations
@@ -577,6 +581,162 @@ def cmd_attach(argv: list) -> None:
     )
 
 
+def cmd_worklog(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira worklog")
+    add_common_args(parser)
+    parser.add_argument("issue_key")
+    parser.add_argument("--time", dest="time_spent",
+                        help="Time to log, e.g. '1h 30m'. Omit to list existing worklogs.")
+    parser.add_argument("--comment", help="Optional worklog comment.")
+    parser.add_argument("--started",
+                        help="ISO start time, e.g. 2026-07-08T10:00:00.000+0000 (default: now).")
+    parser.add_argument("--limit", type=int, default=100)
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+
+    # No --time: list existing worklogs (read).
+    if not args.time_spent:
+        logs = client.get_worklogs(args.issue_key, max_results=args.limit)
+        rows = [
+            {"id": w.get("id"),
+             "author": (w.get("author") or {}).get("displayName")
+                       or (w.get("author") or {}).get("name") or "-",
+             "timeSpent": w.get("timeSpent"),
+             "started": w.get("started"),
+             "comment": w.get("comment") or ""}
+            for w in logs
+        ]
+        if args.as_json:
+            emit({"ok": True, "issue": args.issue_key, "count": len(rows),
+                  "totalSeconds": sum(w.get("timeSpentSeconds", 0) for w in logs),
+                  "worklogs": rows}, as_json=True)
+            return
+        if not rows:
+            emit(None, as_json=False, text=f"{args.issue_key}: no worklogs.")
+            return
+        lines = [f"[{r['id']}] {r['author']}  {str(r['started'])[:16]}  {r['timeSpent']}"
+                 + (f"  - {str(r['comment']).strip()}" if r["comment"] else "") for r in rows]
+        emit(None, as_json=False,
+             text=f"{args.issue_key} worklogs ({len(rows)}):\n" + "\n".join(lines))
+        return
+
+    # --time provided: add a worklog (write).
+    if args.comment:
+        client.guard_no_secret_leak(args.comment)
+    # Fetch current state first (safety rule).
+    client.get_json(f"issue/{args.issue_key}", {"fields": "summary"})
+
+    request_body = {"timeSpent": args.time_spent}
+    if args.comment:
+        request_body["comment"] = args.comment
+    if args.started:
+        request_body["started"] = args.started
+
+    if args.dry_run:
+        emit(
+            {"ok": True, "action": "worklog", "dryRun": True, "issue": args.issue_key,
+             "request": request_body},
+            as_json=args.as_json,
+            text=(f"[dry-run] Would log {args.time_spent} on {args.issue_key}"
+                  + (f" - {args.comment}" if args.comment else "") + "."),
+        )
+        return
+
+    created = client.add_worklog(args.issue_key, time_spent=args.time_spent,
+                                 comment=args.comment, started=args.started)
+    emit(
+        {"ok": True, "action": "worklog", "issue": args.issue_key,
+         "worklogId": created.get("id"), "timeSpent": created.get("timeSpent"),
+         "url": profile.browse_url(args.issue_key)},
+        as_json=args.as_json,
+        text=f"Logged {created.get('timeSpent') or args.time_spent} on "
+             f"{args.issue_key} (id {created.get('id')}).",
+    )
+
+
+def cmd_history(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira history")
+    add_common_args(parser)
+    parser.add_argument("issue_key")
+    parser.add_argument("--limit", type=int, default=50,
+                        help="Show at most N most-recent change events.")
+    args = parser.parse_args(argv)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+    summary, histories = client.get_changelog(args.issue_key)
+    if args.limit:
+        histories = histories[-args.limit:]
+
+    events = []
+    for h in histories:
+        changes = [{"field": it.get("field"), "from": it.get("fromString"),
+                    "to": it.get("toString")} for it in (h.get("items") or [])]
+        events.append({
+            "created": h.get("created"),
+            "author": (h.get("author") or {}).get("displayName")
+                      or (h.get("author") or {}).get("name") or "-",
+            "changes": changes,
+        })
+
+    if args.as_json:
+        emit({"ok": True, "issue": args.issue_key, "summary": summary,
+              "count": len(events), "history": events}, as_json=True)
+        return
+    if not events:
+        emit(None, as_json=False, text=f"{args.issue_key}: no change history.")
+        return
+    blocks = []
+    for e in events:
+        head = f"{str(e['created'])[:16]}  {e['author']}"
+        rows = [f"  {c['field']}: {c['from'] or '-'} -> {c['to'] or '-'}"
+                for c in e["changes"]]
+        blocks.append(head + "\n" + "\n".join(rows))
+    emit(None, as_json=False,
+         text=f"{args.issue_key} history ({len(events)}):\n\n" + "\n\n".join(blocks))
+
+
+def cmd_filters(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira filters")
+    add_common_args(parser)
+    args = parser.parse_args(argv)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+    filters = client.favourite_filters()
+    rows = [{"id": f.get("id"), "name": f.get("name"),
+             "owner": (f.get("owner") or {}).get("displayName"),
+             "jql": f.get("jql")} for f in filters]
+    emit(
+        {"ok": True, "count": len(rows), "filters": rows},
+        as_json=args.as_json,
+        text=(f"Favourite filters ({len(rows)}):\n" +
+              "\n".join(f"  [{r['id']}] {r['name']}  - {r['jql']}" for r in rows))
+             if rows else "No favourite filters.",
+    )
+
+
+def cmd_filter(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira filter")
+    add_common_args(parser)
+    parser.add_argument("filter_id")
+    parser.add_argument("--limit", type=int, default=50)
+    args = parser.parse_args(argv)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+    flt = client.get_filter(args.filter_id)
+    jql = flt.get("jql") or ""
+    if not jql:
+        raise JiraOpsError("not_found", f"Filter {args.filter_id} has no JQL or is not visible.")
+    name = flt.get("name") or args.filter_id
+    _search_and_emit(profile, jql, args.limit, args.as_json,
+                     f"Filter '{name}' [{args.filter_id}]")
+
+
 def main() -> None:
     ensure_venv()
     if len(sys.argv) < 2:
@@ -594,6 +754,10 @@ def main() -> None:
         "link": cmd_link,
         "link-types": cmd_link_types,
         "attach": cmd_attach,
+        "worklog": cmd_worklog,
+        "history": cmd_history,
+        "filters": cmd_filters,
+        "filter": cmd_filter,
     }
     handler = dispatch.get(command)
     if not handler:

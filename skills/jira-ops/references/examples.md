@@ -127,6 +127,25 @@ Repeatable `--file`; paths are checked locally before upload. The client sends
 multipart form-data with `X-Atlassian-Token: no-check`. Returns `{"ok": true,
 "action": "attach", "issue": KEY, "attached": [{id, filename, size}], ...}`.
 
+## History, worklogs, filters
+
+```
+# Field-level change history (from -> to per event)
+python scripts/jira.py history ABC-123 --limit 20
+
+# List logged work, then log more (a write; supports --dry-run)
+python scripts/jira.py worklog ABC-123
+python scripts/jira.py worklog ABC-123 --time "1h 30m" --comment "pairing" --dry-run
+
+# Saved filters: list favourites, then run one
+python scripts/jira.py filters
+python scripts/jira.py filter 10123 --limit 50
+```
+
+`worklog KEY` with no `--time` lists entries; with `--time` it logs work.
+`filter ID` fetches the saved filter and runs its JQL through the same search
+path as `search`.
+
 ## Sprint planning (write)
 
 ```

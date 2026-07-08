@@ -132,6 +132,9 @@ python scripts/jira.py create --project ABC --type Task --summary "New task" --d
 python scripts/jira.py assign ABC-123 --to jsmith --dry-run
 python scripts/jira.py link ABC-123 --to ABC-124 --type "Blocks" --dry-run
 python scripts/jira.py attach ABC-123 --file .\build.log --dry-run
+python scripts/jira.py worklog ABC-123 --time "1h 30m" --dry-run
+python scripts/jira.py history ABC-123
+python scripts/jira.py filters
 python scripts/jira.py users --query smith
 python scripts/jira.py projects
 python scripts/jira.py sprint --project ABC        # active sprint + status breakdown
@@ -140,7 +143,7 @@ python scripts/jira.py backlog --project ABC       # backlog for planning
 
 Add `--json` to any command for machine-readable output. Write commands
 (`comment`, `transition`, `update`, `create`, `assign`, `link`, `attach`,
-`sprint-add`) support `--dry-run` to preview the exact request.
+`worklog`, `sprint-add`) support `--dry-run` to preview the exact request.
 
 ## Corporate network
 

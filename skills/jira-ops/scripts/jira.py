@@ -9,6 +9,8 @@ Commands:
   auth <sub>            set-token | test-auth | clear-token | whoami | reset
   search               Search issues by JQL or preset
   mine                 List issues assigned to you (preset shortcuts)
+  filters              List your favourite saved filters
+  filter <FILTER-ID>   Run a saved filter's JQL
   view <ISSUE-KEY>     Show issue details
   comment <ISSUE-KEY>  Add a comment (supports --dry-run)
   comments <ISSUE-KEY> List comments on an issue
@@ -18,6 +20,8 @@ Commands:
   link <KEY>           Link issues (--to OTHER --type "Blocks") (--dry-run)
   link-types           List configured issue link types
   attach <KEY>         Attach file(s) to an issue (--file PATH) (--dry-run)
+  worklog <KEY>        Log work (--time "1h 30m") or list worklogs (--dry-run)
+  history <KEY>        Show an issue's change history (changelog)
   transitions <KEY>    List available transitions
   transition <KEY>     Move issue by transition id or status name (--dry-run)
   projects             List visible projects
@@ -56,6 +60,10 @@ _COMMANDS = {
     "link": "jira_issue.py",
     "link-types": "jira_issue.py",
     "attach": "jira_issue.py",
+    "worklog": "jira_issue.py",
+    "history": "jira_issue.py",
+    "filters": "jira_issue.py",
+    "filter": "jira_issue.py",
     "projects": "jira_project.py",
     "users": "jira_project.py",
     "transitions": "jira_transition.py",

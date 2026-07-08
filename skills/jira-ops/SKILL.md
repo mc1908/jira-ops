@@ -84,8 +84,10 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
 | Stale / blocked | `python scripts/jira.py mine --preset my-stale` / `my-blocked` |
 | Search JQL | `python scripts/jira.py search --jql "project = ABC AND status = Open"` |
 | Open in a project | `python scripts/jira.py search --project ABC` |
+| Saved filters | `python scripts/jira.py filters` / `filter 10123` |
 | View a ticket | `python scripts/jira.py view ABC-123` |
 | Read comments | `python scripts/jira.py comments ABC-123` |
+| Change history | `python scripts/jira.py history ABC-123` |
 | List transitions | `python scripts/jira.py transitions ABC-123` |
 | Transition | `python scripts/jira.py transition ABC-123 --to "In Review"` |
 | Comment | `python scripts/jira.py comment ABC-123 --body "text"` |
@@ -95,6 +97,8 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
 | Link issues | `python scripts/jira.py link ABC-123 --to ABC-124 --type "Blocks"` |
 | Link types | `python scripts/jira.py link-types` |
 | Attach file | `python scripts/jira.py attach ABC-123 --file .\log.txt` |
+| Log work | `python scripts/jira.py worklog ABC-123 --time "1h 30m"` |
+| List worklogs | `python scripts/jira.py worklog ABC-123` |
 | Find a user | `python scripts/jira.py users --query smith` |
 | Projects | `python scripts/jira.py projects` |
 | Boards | `python scripts/jira.py boards --project ABC` |
@@ -112,12 +116,13 @@ Presets: `my-open`, `my-in-progress`, `my-stale`, `my-blocked`,
 
 - **Fetch current state first.** Every write command re-reads the issue before acting.
 - **Preview writes.** `comment`, `transition`, `update`, `create`, `assign`,
-  `link`, `attach`, and `sprint-add` accept `--dry-run` to show the exact
-  payload. Use it before real writes unless the user clearly asked to send.
+  `link`, `attach`, `worklog`, and `sprint-add` accept `--dry-run` to show the
+  exact payload. Use it before real writes unless the user clearly asked to send.
 - **Transitions are runtime data.** Never assume names; run `transitions KEY` first.
   Transition by `--to "Status/Transition name"` or `--id`.
 - **Confirm before write.** Get user approval before any write command
-  (`comment` / `transition` / `update` / `create` / `assign` / `link` / `attach` / `sprint-add`).
+  (`comment` / `transition` / `update` / `create` / `assign` / `link` / `attach` /
+  `worklog` / `sprint-add`).
 - **Resolve names, don't guess.** Use `users --query` for exact assignee
   usernames and `link-types` for valid link names before an `assign`/`link`.
 - **Never print or commit the PAT.** Read tokens via stdin/prompt, not argv.
@@ -204,6 +209,23 @@ python scripts/jira.py attach ABC-123 --file .\build.log --file .\screenshot.png
   names and sizes without uploading. Paths are validated locally first.
 - Uploads go through multipart form-data with the required
   `X-Atlassian-Token: no-check` header (handled by the client).
+
+## History, worklogs, and saved filters
+
+```
+python scripts/jira.py history ABC-123                 # who changed what, when
+python scripts/jira.py worklog ABC-123                 # list logged work
+python scripts/jira.py worklog ABC-123 --time "1h 30m" --comment "debugging" --dry-run
+python scripts/jira.py filters                         # your favourite saved filters
+python scripts/jira.py filter 10123                    # run a saved filter's JQL
+```
+
+- `history KEY` reads the changelog (field-level from -> to per event); `--limit`
+  keeps the most recent N events.
+- `worklog KEY` **lists** entries; adding `--time "1h 30m"` **logs** work (a
+  write, so it supports `--dry-run`). `--started` accepts an ISO timestamp.
+- `filters` lists favourites; `filter ID` fetches the saved filter and runs its
+  JQL like `search`.
 
 ## Sprint planning
 

@@ -6,8 +6,12 @@ Invoked as:
   jira mine    [--preset my-open|my-in-progress|my-stale|my-blocked|...] [--json]
   jira view    ISSUE-KEY [--json]
   jira comment ISSUE-KEY (--body "..." | --template NAME ...) [--dry-run] [--json]
+  jira comments ISSUE-KEY [--limit N] [--json]
   jira update  ISSUE-KEY [--summary ... --description ... --label ... --field k=v] [--dry-run] [--json]
   jira create  --project ABC --type Task --summary "..." [--description ... --label ...] [--dry-run] [--json]
+  jira assign  ISSUE-KEY --to username | --to -            [--dry-run] [--json]
+  jira link    ISSUE-KEY --to OTHER --type "Blocks"        [--comment ...] [--dry-run] [--json]
+  jira link-types                                          [--json]
 """
 
 from __future__ import annotations
@@ -383,6 +387,147 @@ def cmd_create(argv: list) -> None:
     )
 
 
+def cmd_comments(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira comments")
+    add_common_args(parser)
+    parser.add_argument("issue_key")
+    parser.add_argument("--limit", type=int, default=50)
+    args = parser.parse_args(argv)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+    comments = client.paginate(
+        f"issue/{args.issue_key}/comment", key="comments", max_results=args.limit)
+    rows = [
+        {"id": c.get("id"),
+         "author": (c.get("author") or {}).get("displayName")
+                   or (c.get("author") or {}).get("name") or "-",
+         "created": c.get("created"),
+         "updated": c.get("updated"),
+         "body": c.get("body") or ""}
+        for c in comments
+    ]
+    if args.as_json:
+        emit({"ok": True, "issue": args.issue_key, "count": len(rows),
+              "comments": rows}, as_json=True)
+        return
+    if not rows:
+        emit(None, as_json=False, text=f"{args.issue_key}: no comments.")
+        return
+    blocks = []
+    for r in rows:
+        body = str(r["body"]).strip()
+        blocks.append(f"[{r['id']}] {r['author']}  {str(r['created'])[:16]}\n  "
+                      + body.replace("\n", "\n  "))
+    emit(None, as_json=False,
+         text=f"{args.issue_key} comments ({len(rows)}):\n\n" + "\n\n".join(blocks))
+
+
+def cmd_assign(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira assign")
+    add_common_args(parser)
+    parser.add_argument("issue_key")
+    parser.add_argument("--to", required=True,
+                        help="Assignee username, or '-' to unassign.")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+
+    unassign = args.to.strip() == "-"
+    username = None if unassign else args.to.strip()
+    target_label = "(unassigned)" if unassign else username
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+
+    # Fetch current state first (safety rule).
+    issue = client.get_json(f"issue/{args.issue_key}", {"fields": "assignee,summary"})
+    current = ((issue.get("fields") or {}).get("assignee") or {}).get("name") or "(unassigned)"
+
+    if args.dry_run:
+        emit(
+            {"ok": True, "action": "assign", "dryRun": True, "issue": args.issue_key,
+             "from": current, "to": target_label, "request": {"name": username}},
+            as_json=args.as_json,
+            text=f"[dry-run] Would reassign {args.issue_key}: {current} -> {target_label}.",
+        )
+        return
+
+    client.assign_issue(args.issue_key, username)
+    emit(
+        {"ok": True, "action": "assign", "issue": args.issue_key,
+         "from": current, "to": target_label, "url": profile.browse_url(args.issue_key)},
+        as_json=args.as_json,
+        text=f"{args.issue_key} reassigned: {current} -> {target_label}.",
+    )
+
+
+def cmd_link_types(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira link-types")
+    add_common_args(parser)
+    args = parser.parse_args(argv)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+    types = client.link_types()
+    rows = [{"name": t.get("name"), "inward": t.get("inward"),
+             "outward": t.get("outward")} for t in types]
+    emit(
+        {"ok": True, "count": len(rows), "linkTypes": rows},
+        as_json=args.as_json,
+        text=("Link types (use --type NAME with 'link'):\n" +
+              "\n".join(f"  {r['name']:<16} outward: {r['outward']:<20} inward: {r['inward']}"
+                        for r in rows)) if rows else "No link types configured.",
+    )
+
+
+def cmd_link(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira link")
+    add_common_args(parser)
+    parser.add_argument("issue_key", help="Subject issue (the outward side, e.g. the blocker).")
+    parser.add_argument("--to", required=True, dest="other",
+                        help="Object issue key (the inward side).")
+    parser.add_argument("--type", required=True, dest="link_type",
+                        help="Link type name, e.g. Blocks, Relates, Duplicate. See 'link-types'.")
+    parser.add_argument("--comment", help="Optional comment added with the link.")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+    if args.comment:
+        client.guard_no_secret_leak(args.comment)
+
+    # Fetch both issues first (safety rule; also validates the keys exist).
+    client.get_json(f"issue/{args.issue_key}", {"fields": "summary"})
+    client.get_json(f"issue/{args.other}", {"fields": "summary"})
+
+    request_body = {
+        "type": {"name": args.link_type},
+        "outwardIssue": {"key": args.issue_key},
+        "inwardIssue": {"key": args.other},
+    }
+    if args.comment:
+        request_body["comment"] = {"body": args.comment}
+
+    if args.dry_run:
+        emit(
+            {"ok": True, "action": "link", "dryRun": True, "outward": args.issue_key,
+             "inward": args.other, "type": args.link_type, "request": request_body},
+            as_json=args.as_json,
+            text=f"[dry-run] Would link {args.issue_key} --[{args.link_type}]--> {args.other}.",
+        )
+        return
+
+    client.link_issues(outward_key=args.issue_key, inward_key=args.other,
+                       link_type=args.link_type, comment=args.comment)
+    emit(
+        {"ok": True, "action": "link", "outward": args.issue_key, "inward": args.other,
+         "type": args.link_type, "url": profile.browse_url(args.issue_key)},
+        as_json=args.as_json,
+        text=f"Linked {args.issue_key} --[{args.link_type}]--> {args.other}.",
+    )
+
+
 def main() -> None:
     ensure_venv()
     if len(sys.argv) < 2:
@@ -393,8 +538,12 @@ def main() -> None:
         "mine": cmd_mine,
         "view": cmd_view,
         "comment": cmd_comment,
+        "comments": cmd_comments,
         "update": cmd_update,
         "create": cmd_create,
+        "assign": cmd_assign,
+        "link": cmd_link,
+        "link-types": cmd_link_types,
     }
     handler = dispatch.get(command)
     if not handler:

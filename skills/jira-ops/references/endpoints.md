@@ -11,13 +11,18 @@ Base: `<baseUrl>/rest/api/2`. Bearer auth with a PAT. All requests go through
 | List projects | `GET /project` (paginated via `paginate`) |
 | Project metadata | `GET /project/{keyOrId}` |
 | Create metadata | `GET /issue/createmeta?projectKeys=KEY&expand=projects.issuetypes.fields` |
+| User lookup | `GET /user/search?username=QUERY` |
 | View issue | `GET /issue/{key}?fields=...` |
 | Search | `POST /search` `{jql,startAt,maxResults,fields}` |
+| List comments | `GET /issue/{key}/comment` (paginated, key `comments`) |
 | Add comment | `POST /issue/{key}/comment` `{body}` |
+| Assign / unassign | `PUT /issue/{key}/assignee` `{name}` (`null` unassigns) |
+| Link issues | `POST /issueLink` `{type:{name},outwardIssue,inwardIssue}` |
+| Link types | `GET /issueLinkType` (key `issueLinkTypes`) |
 | List transitions | `GET /issue/{key}/transitions` |
 | Do transition | `POST /issue/{key}/transitions` `{transition:{id}}` |
-| Create issue | `POST /issue` `{fields:{...}}` (Phase 2) |
-| Edit fields | `PUT /issue/{key}` `{fields:{...}}` (Phase 2) |
+| Create issue | `POST /issue` `{fields:{...}}` |
+| Edit fields | `PUT /issue/{key}` `{fields:{...}}` |
 
 ## Agile endpoints (sprints/boards)
 
@@ -31,6 +36,7 @@ to exist; scrum boards are needed for sprints/backlog.
 | Sprint details | `GET /sprint/{sprintId}` |
 | Sprint issues | `GET /sprint/{sprintId}/issue?fields=...` (key `issues`) |
 | Board backlog | `GET /board/{boardId}/backlog?fields=...` (key `issues`) |
+| Add issues to sprint | `POST /sprint/{sprintId}/issue` `{issues:[KEY,...]}` |
 
 `sprint --project KEY` resolves the project's first scrum board, picks the sprint
 by `--state` (default `active`), then aggregates issues into a per-status

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Project commands: list projects, view metadata, create-meta.
+"""Project commands: list projects, view metadata, create-meta, user lookup.
 
 Invoked as:
   jira projects                 List visible projects
   jira projects --key PROJ      Show one project's metadata
   jira projects --key PROJ --createmeta   Required/allowed fields for creation
+  jira users --query NAME       Look up users (resolve assignee usernames)
 """
 
 from __future__ import annotations
@@ -88,11 +89,43 @@ def cmd_projects(argv: list) -> None:
     )
 
 
+def cmd_users(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira users")
+    add_common_args(parser)
+    parser.add_argument("--query", required=True,
+                        help="Username, display name, or email fragment to search.")
+    parser.add_argument("--limit", type=int, default=20)
+    args = parser.parse_args(argv)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+    users = client.search_users(args.query, max_results=args.limit)
+    rows = [{"name": u.get("name"), "displayName": u.get("displayName"),
+             "email": u.get("emailAddress"), "active": u.get("active", True)}
+            for u in users]
+    emit(
+        {"ok": True, "query": args.query, "count": len(rows), "users": rows},
+        as_json=args.as_json,
+        text=(f"Users matching '{args.query}' ({len(rows)}):\n" +
+              "\n".join(f"  {r['name']:<20} {r['displayName']}"
+                        f"{'' if r['active'] else '  (inactive)'}" for r in rows))
+             if rows else f"No users matching '{args.query}'.",
+    )
+
+
 def main() -> None:
     ensure_venv()
-    if len(sys.argv) < 2 or sys.argv[1] != "projects":
-        raise JiraOpsError("config", "Usage: jira projects [--key KEY] [--createmeta]")
-    cmd_projects(sys.argv[2:])
+    if len(sys.argv) < 2:
+        raise JiraOpsError("config", "Missing command.")
+    command, rest = sys.argv[1], sys.argv[2:]
+    dispatch = {
+        "projects": cmd_projects,
+        "users": cmd_users,
+    }
+    handler = dispatch.get(command)
+    if not handler:
+        raise JiraOpsError("config", f"Unknown command: {command}")
+    handler(rest)
 
 
 if __name__ == "__main__":

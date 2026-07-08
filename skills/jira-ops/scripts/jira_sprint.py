@@ -9,6 +9,7 @@ Invoked as:
   jira sprints (--board ID | --project KEY) [--state active|future|closed] [--json]
   jira sprint  (--id ID | --project KEY) [--state active] [--issues] [--limit N] [--json]
   jira backlog (--board ID | --project KEY) [--limit N] [--json]
+  jira sprint-add --id SPRINT_ID --issue KEY [--issue KEY ...] [--dry-run] [--json]
 """
 
 from __future__ import annotations
@@ -236,6 +237,42 @@ def cmd_backlog(argv: list) -> None:
     )
 
 
+def cmd_sprint_add(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira sprint-add")
+    add_common_args(parser)
+    parser.add_argument("--id", dest="sprint_id", type=int, required=True,
+                        help="Target sprint id (see 'sprints').")
+    parser.add_argument("--issue", action="append", dest="issues", required=True,
+                        help="Issue key to move into the sprint (repeatable).")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+
+    profile = load_profile(args.profile)
+    client = JiraClient(profile)
+
+    # Fetch the sprint first (confirms it exists and surfaces its name/state).
+    sprint = client.get_json(f"{profile.agile_base}/sprint/{args.sprint_id}")
+    keys = [k.strip() for k in args.issues]
+    label = f"{args.sprint_id} ({sprint.get('name')})"
+
+    if args.dry_run:
+        emit(
+            {"ok": True, "action": "sprint-add", "dryRun": True, "sprint": args.sprint_id,
+             "issues": keys, "request": {"issues": keys}},
+            as_json=args.as_json,
+            text=f"[dry-run] Would move {', '.join(keys)} into sprint {label}.",
+        )
+        return
+
+    client.add_to_sprint(args.sprint_id, keys)
+    emit(
+        {"ok": True, "action": "sprint-add", "sprint": args.sprint_id,
+         "name": sprint.get("name"), "issues": keys},
+        as_json=args.as_json,
+        text=f"Moved {', '.join(keys)} into sprint {label}.",
+    )
+
+
 def main() -> None:
     ensure_venv()
     if len(sys.argv) < 2:
@@ -246,6 +283,7 @@ def main() -> None:
         "sprints": cmd_sprints,
         "sprint": cmd_sprint,
         "backlog": cmd_backlog,
+        "sprint-add": cmd_sprint_add,
     }
     handler = dispatch.get(command)
     if not handler:

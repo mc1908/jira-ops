@@ -197,6 +197,50 @@ class JiraClient:
             raise JiraOpsError("validation", "No fields provided for issue creation.")
         return self.post_json("issue", {"fields": fields})
 
+    def assign_issue(self, key: str, username: Optional[str]) -> Any:
+        """Set or clear an issue's assignee via PUT /issue/{key}/assignee.
+
+        ``username`` is a Data Center login name; ``None`` unassigns.
+        """
+        return self.put_json(f"issue/{key}/assignee", {"name": username})
+
+    def link_issues(
+        self,
+        *,
+        outward_key: str,
+        inward_key: str,
+        link_type: str,
+        comment: Optional[str] = None,
+    ) -> Any:
+        """Create an issue link via POST /issueLink.
+
+        Reads as: ``outward_key`` <type.outward> ``inward_key`` (e.g. with type
+        "Blocks", ``outward_key`` blocks ``inward_key``).
+        """
+        body: Dict[str, Any] = {
+            "type": {"name": link_type},
+            "outwardIssue": {"key": outward_key},
+            "inwardIssue": {"key": inward_key},
+        }
+        if comment:
+            body["comment"] = {"body": comment}
+        return self.post_json("issueLink", body)
+
+    def link_types(self) -> List[dict]:
+        """Return the configured issue link types (name/inward/outward)."""
+        data = self.get_json("issueLinkType")
+        return data.get("issueLinkTypes", []) if isinstance(data, dict) else []
+
+    def search_users(self, query: str, *, max_results: int = 20) -> List[dict]:
+        """Look up users by username/name/email fragment (GET /user/search)."""
+        data = self.get_json("user/search", {"username": query, "maxResults": max_results})
+        return data if isinstance(data, list) else []
+
+    def add_to_sprint(self, sprint_id: int, issue_keys: Iterable[str]) -> Any:
+        """Move issues into a sprint via the Agile POST /sprint/{id}/issue."""
+        url = f"{self.profile.agile_base}/sprint/{sprint_id}/issue"
+        return self.post_json(url, {"issues": list(issue_keys)})
+
     # ------------------------------------------------------------------ #
     # pagination
     # ------------------------------------------------------------------ #

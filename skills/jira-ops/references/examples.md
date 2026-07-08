@@ -96,3 +96,33 @@ python scripts/jira.py create --project ABC --type Story --summary "Add SSO" \
 user). On validation errors, `projects --key ABC --createmeta` lists required
 fields and valid issue types. Returns `{"ok": true, "action": "create", "issue":
 KEY, "url": ...}` with `--json`.
+
+## Comments, assign, link
+
+```
+# Read the discussion thread (view only shows the description)
+python scripts/jira.py comments ABC-123 --limit 20
+
+# Resolve an exact username, then reassign
+python scripts/jira.py users --query smith
+python scripts/jira.py assign ABC-123 --to jsmith          # '--to -' unassigns
+
+# Link issues (KEY <outward> OTHER); list valid names first
+python scripts/jira.py link-types
+python scripts/jira.py link ABC-123 --to ABC-124 --type "Blocks" --dry-run
+```
+
+`assign` and `link` re-read state first, support `--dry-run`, and guard comment
+bodies against secret leaks. `link ABC-123 --to ABC-124 --type Blocks` means
+"ABC-123 blocks ABC-124".
+
+## Sprint planning (write)
+
+```
+python scripts/jira.py sprints --project ABC --state future   # find the sprint id
+python scripts/jira.py sprint-add --id 42 --issue ABC-123 --issue ABC-124 --dry-run
+python scripts/jira.py sprint-add --id 42 --issue ABC-123
+```
+
+`sprint-add` fetches the sprint first (confirming it exists) and moves one or
+more issues into it via the Agile API.

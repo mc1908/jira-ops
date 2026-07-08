@@ -11,14 +11,20 @@ Commands:
   mine                 List issues assigned to you (preset shortcuts)
   view <ISSUE-KEY>     Show issue details
   comment <ISSUE-KEY>  Add a comment (supports --dry-run)
+  comments <ISSUE-KEY> List comments on an issue
   update <ISSUE-KEY>   Edit fields: summary/description/labels/etc. (--dry-run)
   create               Create a new issue (--project --type --summary, --dry-run)
+  assign <KEY>         Set/clear assignee (--to username | --to -) (--dry-run)
+  link <KEY>           Link issues (--to OTHER --type "Blocks") (--dry-run)
+  link-types           List configured issue link types
   transitions <KEY>    List available transitions
   transition <KEY>     Move issue by transition id or status name (--dry-run)
   projects             List visible projects
+  users                Look up users (--query NAME) to resolve usernames
   boards               List agile boards (optionally for a project)
   sprints              List sprints on a board/project (active|future|closed)
   sprint               Sprint details + status breakdown (active sprint by project)
+  sprint-add           Move issues into a sprint (--id --issue, --dry-run)
   backlog              List a board/project backlog for sprint planning
   health               Local readiness check (no network)
 """
@@ -42,14 +48,20 @@ _COMMANDS = {
     "mine": "jira_issue.py",
     "view": "jira_issue.py",
     "comment": "jira_issue.py",
+    "comments": "jira_issue.py",
     "update": "jira_issue.py",
     "create": "jira_issue.py",
+    "assign": "jira_issue.py",
+    "link": "jira_issue.py",
+    "link-types": "jira_issue.py",
     "projects": "jira_project.py",
+    "users": "jira_project.py",
     "transitions": "jira_transition.py",
     "transition": "jira_transition.py",
     "boards": "jira_sprint.py",
     "sprints": "jira_sprint.py",
     "sprint": "jira_sprint.py",
+    "sprint-add": "jira_sprint.py",
     "backlog": "jira_sprint.py",
     "health": "bootstrap.py",
 }

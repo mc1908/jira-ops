@@ -85,16 +85,22 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
 | Search JQL | `python scripts/jira.py search --jql "project = ABC AND status = Open"` |
 | Open in a project | `python scripts/jira.py search --project ABC` |
 | View a ticket | `python scripts/jira.py view ABC-123` |
+| Read comments | `python scripts/jira.py comments ABC-123` |
 | List transitions | `python scripts/jira.py transitions ABC-123` |
 | Transition | `python scripts/jira.py transition ABC-123 --to "In Review"` |
 | Comment | `python scripts/jira.py comment ABC-123 --body "text"` |
 | Update fields | `python scripts/jira.py update ABC-123 --summary "..." --description "..."` |
 | Create issue | `python scripts/jira.py create --project ABC --type Task --summary "..."` |
+| Assign / unassign | `python scripts/jira.py assign ABC-123 --to jsmith` (`--to -` clears) |
+| Link issues | `python scripts/jira.py link ABC-123 --to ABC-124 --type "Blocks"` |
+| Link types | `python scripts/jira.py link-types` |
+| Find a user | `python scripts/jira.py users --query smith` |
 | Projects | `python scripts/jira.py projects` |
 | Boards | `python scripts/jira.py boards --project ABC` |
 | Sprints | `python scripts/jira.py sprints --project ABC --state active` |
 | Active sprint status | `python scripts/jira.py sprint --project ABC` |
 | Sprint issue list | `python scripts/jira.py sprint --project ABC --issues` |
+| Add issue to sprint | `python scripts/jira.py sprint-add --id 42 --issue ABC-123` |
 | Backlog (plan next) | `python scripts/jira.py backlog --project ABC` |
 | Local health | `python scripts/jira.py health` |
 
@@ -104,12 +110,15 @@ Presets: `my-open`, `my-in-progress`, `my-stale`, `my-blocked`,
 ## Safety rules (always)
 
 - **Fetch current state first.** Every write command re-reads the issue before acting.
-- **Preview writes.** `comment`, `transition`, and `update` accept `--dry-run` to
-  show the exact payload. Use it before real writes unless the user clearly asked
-  to send.
+- **Preview writes.** `comment`, `transition`, `update`, `create`, `assign`,
+  `link`, and `sprint-add` accept `--dry-run` to show the exact payload. Use it
+  before real writes unless the user clearly asked to send.
 - **Transitions are runtime data.** Never assume names; run `transitions KEY` first.
   Transition by `--to "Status/Transition name"` or `--id`.
-- **Confirm before write.** Get user approval before `comment` / `transition` / `update` / `create`.
+- **Confirm before write.** Get user approval before any write command
+  (`comment` / `transition` / `update` / `create` / `assign` / `link` / `sprint-add`).
+- **Resolve names, don't guess.** Use `users --query` for exact assignee
+  usernames and `link-types` for valid link names before an `assign`/`link`.
 - **Never print or commit the PAT.** Read tokens via stdin/prompt, not argv.
 - **Data Center specifics:** assignee uses `username` (not Cloud `accountId`);
   comment bodies use wiki markup / plain text (not ADF).
@@ -167,6 +176,23 @@ python scripts/jira.py create --project ABC --type Bug \
 - Data Center specifics apply: `--assignee` is a `username`, descriptions are
   wiki markup / plain text (not ADF).
 
+## Reading comments, assigning, linking
+
+```
+python scripts/jira.py comments ABC-123                     # read the discussion thread
+python scripts/jira.py users --query smith                  # find an exact username
+python scripts/jira.py assign ABC-123 --to jsmith           # reassign (--to - to clear)
+python scripts/jira.py link-types                           # list valid link names
+python scripts/jira.py link ABC-123 --to ABC-124 --type "Blocks" --dry-run
+```
+
+- `view` shows the description; use `comments KEY` to read the full comment
+  thread (author, timestamp, body).
+- `assign`/`link` are writes with `--dry-run`. `link KEY --to OTHER --type T`
+  reads as *KEY <type.outward> OTHER* (e.g. with `Blocks`, KEY blocks OTHER).
+- Look up exact usernames with `users --query` and valid link names with
+  `link-types` rather than guessing.
+
 ## Sprint planning
 
 Sprint/board data uses Jira's **Agile REST API** (`/rest/agile/1.0`), so these
@@ -178,6 +204,8 @@ commands need a **scrum board** to exist for the project.
 - *"Plan the next sprint from the backlog."* Read candidates with
   `python scripts/jira.py backlog --project ABC`, and inspect the upcoming
   sprint with `python scripts/jira.py sprints --project ABC --state future`.
+- *"Pull an item into the sprint."* Resolve the sprint id with `sprints`, then
+  `python scripts/jira.py sprint-add --id 42 --issue ABC-123 --dry-run`.
 - If a project has several boards, resolve the id with `boards --project ABC`
   and pass `--board ID` explicitly.
 

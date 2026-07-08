@@ -88,6 +88,7 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
 | List transitions | `python scripts/jira.py transitions ABC-123` |
 | Transition | `python scripts/jira.py transition ABC-123 --to "In Review"` |
 | Comment | `python scripts/jira.py comment ABC-123 --body "text"` |
+| Update fields | `python scripts/jira.py update ABC-123 --summary "..." --description "..."` |
 | Projects | `python scripts/jira.py projects` |
 | Boards | `python scripts/jira.py boards --project ABC` |
 | Sprints | `python scripts/jira.py sprints --project ABC --state active` |
@@ -102,11 +103,12 @@ Presets: `my-open`, `my-in-progress`, `my-stale`, `my-blocked`,
 ## Safety rules (always)
 
 - **Fetch current state first.** Every write command re-reads the issue before acting.
-- **Preview writes.** `comment` and `transition` accept `--dry-run` to show the exact
-  payload. Use it before real writes unless the user clearly asked to send.
+- **Preview writes.** `comment`, `transition`, and `update` accept `--dry-run` to
+  show the exact payload. Use it before real writes unless the user clearly asked
+  to send.
 - **Transitions are runtime data.** Never assume names; run `transitions KEY` first.
   Transition by `--to "Status/Transition name"` or `--id`.
-- **Confirm before write.** Get user approval before `comment` / `transition`.
+- **Confirm before write.** Get user approval before `comment` / `transition` / `update`.
 - **Never print or commit the PAT.** Read tokens via stdin/prompt, not argv.
 - **Data Center specifics:** assignee uses `username` (not Cloud `accountId`);
   comment bodies use wiki markup / plain text (not ADF).
@@ -123,6 +125,22 @@ python scripts/jira.py comment ABC-123 --template implementation-update \
 ```
 
 Templates: `implementation-update`, `test-result`, `blocked`, `handoff`.
+
+## Editing issue fields
+
+Use `update` to set editable fields with the same safety model as `comment` /
+`transition` (fetch-before-write, `--dry-run`, secret-leak guard, `--json`):
+
+```
+python scripts/jira.py update ABC-123 --summary "New title" \
+  --description "Rewritten body (wiki markup)." --priority High \
+  --assignee jsmith --label backend --label -stale --due 2026-08-01 --dry-run
+```
+
+Named flags: `--summary`, `--description`, `--priority`, `--assignee` (username),
+`--label` (repeatable; prefix `-` to remove), `--due`. For anything without a
+flag, use the escape hatch: `--field customfield_10021=Team A` (repeatable) or
+`--field-json '{"fixVersions":[{"name":"1.2"}]}'` (merged into the payload).
 
 ## Sprint planning
 
@@ -146,6 +164,7 @@ commands need a **scrum board** to exist for the project.
 | Endpoints, createmeta, field IDs | `references/endpoints.md` |
 | Auth backends, TLS/proxy, secrets | `references/security.md` |
 | Install / troubleshooting setup | `references/setup.md` |
+| Adding a new command / capability | `references/extending.md` |
 
 ## Exit codes (for `--json` callers)
 

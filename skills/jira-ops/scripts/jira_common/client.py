@@ -158,9 +158,34 @@ class JiraClient:
 
     def put_json(self, path: str, body: dict) -> Any:
         resp = self.request("PUT", path, json_body=body)
+        # PUT /issue/{key} returns 204 No Content on success. Normalize the
+        # empty/204 body to an explicit success marker so callers never have to
+        # special-case an empty response (the >=400 error mapping already ran in
+        # request(), so reaching here means the write succeeded).
         if resp.status_code == 204 or not resp.content:
-            return {}
+            return {"ok": True}
         return resp.json()
+
+    def update_issue(
+        self,
+        key: str,
+        *,
+        fields: Optional[dict] = None,
+        update: Optional[dict] = None,
+    ) -> Any:
+        """Edit issue fields via PUT /issue/{key}.
+
+        ``fields`` sets values directly; ``update`` carries verb operations
+        (e.g. label add/remove). At least one must be provided.
+        """
+        body: Dict[str, Any] = {}
+        if fields:
+            body["fields"] = fields
+        if update:
+            body["update"] = update
+        if not body:
+            raise JiraOpsError("validation", "No fields to update.")
+        return self.put_json(f"issue/{key}", body)
 
     # ------------------------------------------------------------------ #
     # pagination

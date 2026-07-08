@@ -49,3 +49,27 @@ python scripts/jira.py comment ABC-123 --template test-result \
 
 Templates render Jira wiki markup: `implementation-update`, `test-result`,
 `blocked`, `handoff`.
+
+## Editing fields
+
+```
+# Set common fields (preview first)
+python scripts/jira.py update ABC-123 --summary "New title" \
+  --description "Rewritten body." --priority High --assignee jsmith --dry-run
+
+# Add and remove labels in one call ('-' prefix removes)
+python scripts/jira.py update ABC-123 --label backend --label -stale
+
+# Set a due date
+python scripts/jira.py update ABC-123 --due 2026-08-01
+
+# Escape hatch for fields without a flag
+python scripts/jira.py update ABC-123 --field customfield_10021="Team A"
+python scripts/jira.py update ABC-123 --field-json '{"fixVersions":[{"name":"1.2"}]}'
+```
+
+Data Center specifics: `--assignee` takes a `username` (not a Cloud `accountId`),
+and `--description` is wiki markup / plain text (not ADF). `update` re-reads the
+issue first, runs the secret-leak guard over string values, and returns
+`{"ok": true, "action": "update", "issue": KEY, "fields": [...], "url": ...}` with
+`--json`. To add a *new* command like this, see `references/extending.md`.

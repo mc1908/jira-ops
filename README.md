@@ -127,13 +127,14 @@ python scripts/jira.py transitions ABC-123
 python scripts/jira.py transition ABC-123 --to "In Review" --dry-run
 python scripts/jira.py comment ABC-123 --body "Deployed to staging." --dry-run
 python scripts/jira.py update ABC-123 --summary "New title" --priority High --dry-run
+python scripts/jira.py create --project ABC --type Task --summary "New task" --dry-run
 python scripts/jira.py projects
 python scripts/jira.py sprint --project ABC        # active sprint + status breakdown
 python scripts/jira.py backlog --project ABC       # backlog for planning
 ```
 
 Add `--json` to any command for machine-readable output. Write commands
-(`comment`, `transition`, `update`) support `--dry-run` to preview the exact request.
+(`comment`, `transition`, `update`, `create`) support `--dry-run` to preview the exact request.
 
 ## Corporate network
 

@@ -12,6 +12,7 @@ Commands:
   view <ISSUE-KEY>     Show issue details
   comment <ISSUE-KEY>  Add a comment (supports --dry-run)
   update <ISSUE-KEY>   Edit fields: summary/description/labels/etc. (--dry-run)
+  create               Create a new issue (--project --type --summary, --dry-run)
   transitions <KEY>    List available transitions
   transition <KEY>     Move issue by transition id or status name (--dry-run)
   projects             List visible projects
@@ -42,6 +43,7 @@ _COMMANDS = {
     "view": "jira_issue.py",
     "comment": "jira_issue.py",
     "update": "jira_issue.py",
+    "create": "jira_issue.py",
     "projects": "jira_project.py",
     "transitions": "jira_transition.py",
     "transition": "jira_transition.py",

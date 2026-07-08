@@ -89,6 +89,7 @@ python scripts/jira.py auth test-auth                     # validates GET /mysel
 | Transition | `python scripts/jira.py transition ABC-123 --to "In Review"` |
 | Comment | `python scripts/jira.py comment ABC-123 --body "text"` |
 | Update fields | `python scripts/jira.py update ABC-123 --summary "..." --description "..."` |
+| Create issue | `python scripts/jira.py create --project ABC --type Task --summary "..."` |
 | Projects | `python scripts/jira.py projects` |
 | Boards | `python scripts/jira.py boards --project ABC` |
 | Sprints | `python scripts/jira.py sprints --project ABC --state active` |
@@ -108,7 +109,7 @@ Presets: `my-open`, `my-in-progress`, `my-stale`, `my-blocked`,
   to send.
 - **Transitions are runtime data.** Never assume names; run `transitions KEY` first.
   Transition by `--to "Status/Transition name"` or `--id`.
-- **Confirm before write.** Get user approval before `comment` / `transition` / `update`.
+- **Confirm before write.** Get user approval before `comment` / `transition` / `update` / `create`.
 - **Never print or commit the PAT.** Read tokens via stdin/prompt, not argv.
 - **Data Center specifics:** assignee uses `username` (not Cloud `accountId`);
   comment bodies use wiki markup / plain text (not ADF).
@@ -141,6 +142,30 @@ Named flags: `--summary`, `--description`, `--priority`, `--assignee` (username)
 `--label` (repeatable; prefix `-` to remove), `--due`. For anything without a
 flag, use the escape hatch: `--field customfield_10021=Team A` (repeatable) or
 `--field-json '{"fixVersions":[{"name":"1.2"}]}'` (merged into the payload).
+
+## Creating issues
+
+Use `create` to open a new issue. `--project` (falls back to the default
+project), `--type`, and `--summary` are the core inputs; the same
+optional/escape-hatch flags as `update` apply:
+
+```
+python scripts/jira.py create --project ABC --type Bug \
+  --summary "Login retry loops on 500" \
+  --description "Steps: ..." --priority High --assignee jsmith \
+  --label backend --dry-run
+```
+
+- **Choose the issue type deliberately.** There is no default — infer `--type`
+  from the request (a defect report → `Bug`, a user-facing feature → `Story`, a
+  test case → `Test`, general work → `Task`). If the type is ambiguous, ask the
+  user rather than guessing. Valid types vary per project; `projects --key ABC
+  --createmeta` lists them.
+- Preview with `--dry-run` before the real write; confirm with the user first.
+- If creation fails validation, run `projects --key ABC --createmeta` to see the
+  required fields and valid issue types for that project.
+- Data Center specifics apply: `--assignee` is a `username`, descriptions are
+  wiki markup / plain text (not ADF).
 
 ## Sprint planning
 

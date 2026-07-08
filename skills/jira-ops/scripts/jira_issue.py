@@ -7,6 +7,7 @@ Invoked as:
   jira view    ISSUE-KEY [--json]
   jira comment ISSUE-KEY (--body "..." | --template NAME ...) [--dry-run] [--json]
   jira update  ISSUE-KEY [--summary ... --description ... --label ... --field k=v] [--dry-run] [--json]
+  jira create  --project ABC --type Task --summary "..." [--description ... --label ...] [--dry-run] [--json]
 """
 
 from __future__ import annotations
@@ -292,6 +293,96 @@ def cmd_update(argv: list) -> None:
     )
 
 
+def cmd_create(argv: list) -> None:
+    parser = argparse.ArgumentParser(prog="jira create")
+    add_common_args(parser)
+    parser.add_argument("--project", help="Project key (default: configured default project).")
+    parser.add_argument("--type", dest="issuetype",
+                        help="Issue type name, e.g. Story, Bug, Task, Test, Sub-task "
+                             "(required; infer from context or ask the user).")
+    parser.add_argument("--summary", required=True, help="Issue summary (title).")
+    parser.add_argument("--description", help="Description (wiki markup / plain text).")
+    parser.add_argument("--priority", help="Priority by name (e.g. High).")
+    parser.add_argument("--assignee", help="Assignee username (Data Center).")
+    parser.add_argument("--label", action="append", dest="labels",
+                        help="Add a label (repeatable).")
+    parser.add_argument("--due", dest="duedate", help="Due date (ISO, e.g. 2026-08-01).")
+    parser.add_argument("--field", action="append", dest="fields_kv",
+                        help="Generic set: key=value (repeatable).")
+    parser.add_argument("--field-json", dest="field_json",
+                        help="Raw JSON object merged into the fields payload.")
+    parser.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args(argv)
+
+    if not args.issuetype:
+        raise JiraOpsError(
+            "config",
+            "Specify --type (e.g. Story, Bug, Task, Test). Determine it from the "
+            "request context; if it is unclear, ask the user instead of guessing. "
+            "Run 'projects --key KEY --createmeta' to list valid issue types.",
+        )
+
+    profile = load_profile(args.profile)
+    project = resolve_project(args.project, profile)
+
+    fields: dict = {
+        "project": {"key": project},
+        "issuetype": {"name": args.issuetype},
+        "summary": args.summary,
+    }
+    if args.description is not None:
+        fields["description"] = args.description
+    if args.priority is not None:
+        fields["priority"] = {"name": args.priority}
+    if args.assignee is not None:
+        fields["assignee"] = {"name": args.assignee}
+    if args.duedate is not None:
+        fields["duedate"] = args.duedate
+    if args.labels:
+        fields["labels"] = [label.strip() for label in args.labels]
+
+    for key, value in _parse_field_pairs(args.fields_kv).items():
+        fields[key] = value
+
+    if args.field_json:
+        try:
+            extra = json.loads(args.field_json)
+        except json.JSONDecodeError as exc:
+            raise JiraOpsError("config", f"Invalid --field-json: {exc}") from exc
+        if not isinstance(extra, dict):
+            raise JiraOpsError("config", "--field-json must be a JSON object.")
+        fields.update(extra)
+
+    client = JiraClient(profile)
+
+    # Refuse to leak the PAT into any string value that would be written.
+    for value in fields.values():
+        if isinstance(value, str):
+            client.guard_no_secret_leak(value)
+
+    request_body = {"fields": fields}
+    if args.dry_run:
+        emit(
+            {"ok": True, "action": "create", "dryRun": True, "project": project,
+             "issueType": args.issuetype, "request": request_body},
+            as_json=args.as_json,
+            text=(f"[dry-run] Would create a {args.issuetype} in {project}:\n\n"
+                  + json.dumps(request_body, indent=2)
+                  + "\n\nTip: 'projects --key " + project
+                  + " --createmeta' lists required fields for each issue type."),
+        )
+        return
+
+    created = client.create_issue(fields)
+    key = created.get("key")
+    emit(
+        {"ok": True, "action": "create", "issue": key,
+         "url": profile.browse_url(key) if key else None},
+        as_json=args.as_json,
+        text=(f"Created {key} in {project}: {args.summary}" if key else "Created issue."),
+    )
+
+
 def main() -> None:
     ensure_venv()
     if len(sys.argv) < 2:
@@ -303,6 +394,7 @@ def main() -> None:
         "view": cmd_view,
         "comment": cmd_comment,
         "update": cmd_update,
+        "create": cmd_create,
     }
     handler = dispatch.get(command)
     if not handler:

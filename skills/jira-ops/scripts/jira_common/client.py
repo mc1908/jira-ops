@@ -187,6 +187,16 @@ class JiraClient:
             raise JiraOpsError("validation", "No fields to update.")
         return self.put_json(f"issue/{key}", body)
 
+    def create_issue(self, fields: dict) -> Any:
+        """Create an issue via POST /issue. Returns {key, id, self}.
+
+        ``fields`` must include at least ``project``, ``issuetype`` and
+        ``summary``; the caller is responsible for shaping them.
+        """
+        if not fields:
+            raise JiraOpsError("validation", "No fields provided for issue creation.")
+        return self.post_json("issue", {"fields": fields})
+
     # ------------------------------------------------------------------ #
     # pagination
     # ------------------------------------------------------------------ #

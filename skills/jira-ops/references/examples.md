@@ -73,3 +73,26 @@ and `--description` is wiki markup / plain text (not ADF). `update` re-reads the
 issue first, runs the secret-leak guard over string values, and returns
 `{"ok": true, "action": "update", "issue": KEY, "fields": [...], "url": ...}` with
 `--json`. To add a *new* command like this, see `references/extending.md`.
+
+## Creating issues
+
+```
+# Discover what a project requires first
+python scripts/jira.py projects --key ABC --createmeta
+
+# Create (preview, then send)
+python scripts/jira.py create --project ABC --type Bug \
+  --summary "Login retry loops on 500" --priority High --dry-run
+python scripts/jira.py create --project ABC --type Bug \
+  --summary "Login retry loops on 500" --priority High
+
+# Extra / custom fields via the escape hatch
+python scripts/jira.py create --project ABC --type Story --summary "Add SSO" \
+  --field customfield_10021="Team A" --field-json '{"components":[{"name":"Auth"}]}'
+```
+
+`--project` falls back to the configured default project; `--type` is required
+(no default — infer it from context, e.g. `Bug`/`Story`/`Task`/`Test`, or ask the
+user). On validation errors, `projects --key ABC --createmeta` lists required
+fields and valid issue types. Returns `{"ok": true, "action": "create", "issue":
+KEY, "url": ...}` with `--json`.
